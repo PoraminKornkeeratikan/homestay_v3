@@ -43,6 +43,7 @@ const bankAccountNameText = document.getElementById("bankAccountNameText");
 const bankAccountNumberText = document.getElementById("bankAccountNumberText");
 const qrPaymentBox = document.getElementById("qrPaymentBox");
 const qrCodeImage = document.getElementById("qrCodeImage");
+const qrAmountText = document.getElementById("qrAmountText");
 const downloadQrBtn = document.getElementById("downloadQrBtn");
 const pageLinkBtn = document.getElementById("pageLinkBtn");
 const gpsLinkBtn = document.getElementById("gpsLinkBtn");
@@ -195,11 +196,22 @@ function setSyncStatus(type, text) {
 }
 
 function activeRooms() {
-  return rooms.filter(room => room.active);
+  const todayKey = toDateKey(new Date());
+  return rooms.filter(room => isRoomOpenOnDate(room, todayKey));
 }
 
 function selectedRoom() {
-  return activeRooms().find(room => room.id === selectedRoomId) || activeRooms()[0] || rooms[0];
+  return activeRooms().find(room => room.id === selectedRoomId) || activeRooms()[0] || null;
+}
+
+function isRoomOpenOnDate(room, dateKey) {
+  if (!room) return false;
+  if (room.active) return true;
+
+  const closedUntil = String(room.closedUntil || "").trim();
+  if (!closedUntil) return false;
+
+  return String(dateKey || toDateKey(new Date())) > closedUntil;
 }
 
 async function loadBootstrap() {
@@ -359,11 +371,13 @@ function hasBookedInRange(startKey, endKey) {
   if (!startKey || !endKey) return false;
 
   const booked = getBookedDateSet(selectedRoomId);
+  const room = rooms.find(item => String(item.id) === String(selectedRoomId));
   const start = fromDateKey(startKey);
   const end = fromDateKey(endKey);
 
   for (let date = new Date(start); date < end; date.setDate(date.getDate() + 1)) {
-    if (booked.has(toDateKey(date))) return true;
+    const key = toDateKey(date);
+    if (booked.has(key) || !isRoomOpenOnDate(room, key)) return true;
   }
 
   return false;
@@ -387,6 +401,7 @@ function renderCalendar() {
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
   const booked = getBookedDateSet(selectedRoomId);
+  const room = rooms.find(item => String(item.id) === String(selectedRoomId));
 
   calendarMonthText.textContent = firstDay.toLocaleDateString("th-TH", {
     month: "long",
@@ -404,11 +419,12 @@ function renderCalendar() {
     const key = toDateKey(date);
     const past = isPastDate(date);
     const isBooked = booked.has(key);
-    const isAvailable = !past && !isBooked;
+    const isClosed = !isRoomOpenOnDate(room, key);
+    const isAvailable = !past && !isBooked && !isClosed;
 
     let classes = ["calendar-day"];
     if (past) classes.push("past");
-    if (isBooked) classes.push("booked");
+    if (isBooked || isClosed) classes.push("booked");
     if (isAvailable) classes.push("available");
 
     const inRange = checkIn.value && checkOut.value && key > checkIn.value && key < checkOut.value;
@@ -416,7 +432,7 @@ function renderCalendar() {
     if (key === checkOut.value) classes.push("selected-end");
     if (inRange) classes.push("in-range");
 
-    const badge = isBooked ? "ไม่ว่าง" : (isAvailable ? "ว่าง" : "");
+    const badge = (isBooked || isClosed) ? "ไม่ว่าง" : (isAvailable ? "ว่าง" : "");
 
     cells.push(`
       <button
@@ -463,7 +479,6 @@ function renderSettings() {
 
   setupHeroLink(pageLinkBtn, settings.pageUrl?.value);
   setupHeroLink(gpsLinkBtn, settings.gpsUrl?.value);
-  setupPaymentQr(settings.qrCodeUrl?.value);
 
   updateSummary();
 }
@@ -482,17 +497,19 @@ function setupHeroLink(element, url) {
   }
 }
 
-function setupPaymentQr(url) {
-  const cleanUrl = String(url || "").trim();
+function setupPaymentQr(amount = 0) {
+  const cleanUrl = getPaymentQrImageUrl(settings, amount, 260);
 
   if (!qrPaymentBox || !qrCodeImage) return;
 
   if (cleanUrl) {
     qrCodeImage.src = cleanUrl;
     qrPaymentBox.classList.remove("hidden");
+    if (qrAmountText) qrAmountText.textContent = `ยอดชำระ ${formatMoney(amount)}`;
   } else {
     qrCodeImage.removeAttribute("src");
     qrPaymentBox.classList.add("hidden");
+    if (qrAmountText) qrAmountText.textContent = "";
   }
 }
 
@@ -647,6 +664,7 @@ function updateSummary() {
   addonTotalText.textContent = formatMoney(summary.addonTotal);
   bookingFeeText.textContent = formatMoney(summary.bookingFee);
   grandTotalText.textContent = formatMoney(summary.grandTotal);
+  setupPaymentQr(summary.grandTotal);
 
   mookataQtyText.textContent = mookataQty;
   mookataMinusBtn.disabled = !mookataCheckbox.checked || mookataQty <= 1;

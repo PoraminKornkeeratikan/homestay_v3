@@ -184,10 +184,72 @@
       .admin-header-actions {
         display: grid;
         grid-template-columns: 1fr auto;
+        gap: .35rem;
+        padding: .35rem;
+        border-radius: .85rem;
+      }
+      .hamburger-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: .8rem;
+      }
+      .hamburger-btn span {
+        width: 18px;
+      }
+      .header-credit-wrap {
+        min-height: 38px;
+        gap: .45rem;
+        padding: .3rem .55rem .3rem .35rem;
+        border-radius: .8rem;
+      }
+      .header-credit-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: .65rem;
+        font-size: .85rem;
+      }
+      .header-credit-val {
+        font-size: .9rem;
+      }
+      .header-credit-label {
+        font-size: .62rem;
       }
       .header-topup-btn {
         grid-column: 1 / -1;
         width: 100%;
+        min-height: 38px;
+        padding: .45rem .7rem;
+        border-radius: .8rem;
+        font-size: .75rem;
+      }
+      .hamburger-dropdown {
+        padding: 4.5rem .75rem .75rem;
+      }
+      .hamburger-popup-card {
+        width: min(300px, calc(100vw - 1.5rem));
+        max-height: calc(100vh - 5.75rem);
+        border-radius: .9rem;
+      }
+      .hamburger-popup-head {
+        padding: .7rem .8rem;
+      }
+      .hamburger-popup-head strong {
+        font-size: .85rem;
+      }
+      .hamburger-close-btn {
+        width: 30px;
+        height: 30px;
+      }
+      .hamburger-menu-item {
+        gap: .6rem;
+        padding: .78rem .85rem;
+        font-size: .84rem;
+      }
+      .hamburger-menu-item .menu-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: .65rem;
+        font-size: .9rem;
       }
     }
 
@@ -285,6 +347,50 @@
       }
     }
 
+    @media (max-width: 480px) {
+      .prep-grid {
+        gap: .75rem;
+        margin-bottom: 1rem;
+      }
+      .prep-section {
+        border-radius: .9rem;
+      }
+      .prep-header {
+        gap: .65rem;
+        padding: .75rem .85rem;
+      }
+      .prep-header-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: .75rem;
+        font-size: 1rem;
+      }
+      .prep-header-text h4 {
+        font-size: .88rem;
+      }
+      .prep-header-text p {
+        font-size: .68rem;
+      }
+      .prep-body {
+        padding: .45rem .85rem .8rem;
+      }
+      .prep-item {
+        gap: .5rem;
+        padding: .65rem 0;
+      }
+      .prep-item-icon {
+        width: 24px;
+        height: 24px;
+        font-size: .75rem;
+      }
+      .prep-item-title {
+        font-size: .82rem;
+      }
+      .prep-item-meta {
+        font-size: .68rem;
+      }
+    }
+
     /* ===== TOPUP SUBMIT BUTTON ===== */
     #topupSendBtn {
       position: relative;
@@ -343,6 +449,21 @@
 
     #topupSendBtn:disabled::after {
       opacity: .35;
+    }
+
+    @media (max-width: 480px) {
+      #topupSendBtn {
+        min-height: 48px;
+        margin-top: .85rem;
+        padding: .72rem .95rem;
+        border-radius: .85rem;
+        font-size: .82rem;
+        line-height: 1.35;
+      }
+      #topupSendBtn::after {
+        width: 7px;
+        height: 7px;
+      }
     }
   </style>
 </head>
@@ -459,6 +580,11 @@
               <div class="topup-amount-highlight">
                 ยอดที่ต้องโอน: <strong id="topupAmountText">-</strong>
               </div>
+              <div class="topup-qr-box hidden" id="topupQrBox">
+                <span>QR-code ตามยอดแพ็กเกจ</span>
+                <img id="topupQrImage" alt="QR-code เติมเครดิต" />
+                <small id="topupQrAmount">เลือกแพ็กเกจก่อน</small>
+              </div>
             </div>
 
             <div class="slip-upload" style="margin-top:1rem">
@@ -533,6 +659,7 @@
           <div class="section-mini-head">
             <h4>⚙️ ตั้งค่าราคาและบัญชีโอน</h4>
             <p>ข้อมูลจะบันทึกลงชีต Settings</p>
+            <button type="button" class="panel-close-btn" onclick="closeAdminPanel('settings')" aria-label="ปิด">✕</button>
           </div>
 
           <form id="settingsForm" class="settings-form">
@@ -557,6 +684,11 @@
               <input type="text" id="settingBankAccountNumber" placeholder="เช่น 123-4-56789-0" />
             </div>
             <div class="field">
+              <label>เลขพร้อมเพย์สำหรับ QR</label>
+              <input type="text" id="settingPromptPayId" placeholder="เบอร์พร้อมเพย์ / เลขบัตรประชาชน / e-Wallet" />
+              <small class="input-hint">ถ้าไม่กรอก ระบบจะลองใช้เลขบัญชีด้านบนในการสร้าง QR ตามยอดรวม</small>
+            </div>
+            <div class="field">
               <label>ลิงก์เพจ</label>
               <input type="url" id="settingPageUrl" placeholder="https://facebook.com/..." />
             </div>
@@ -576,26 +708,10 @@
                   <strong>อัปโหลดโลโก้</strong>
                   <span id="settingLogoFileName">ยังไม่ได้เลือกไฟล์</span>
                   <small>รองรับ JPG, PNG, WEBP ขนาดไม่เกิน 2MB</small>
+                  <img class="upload-preview hidden" id="settingLogoPreview" alt="ตัวอย่างโลโก้" />
                 </label>
               </div>
               <small class="input-hint">โลโก้นี้จะใช้กับหน้า Index, Customer, Admin, Company และ icon บนแท็บเว็บ</small>
-            </div>
-            <div class="field full">
-              <label>รูป QR-code ชำระเงิน เลือกอย่างใดอย่างหนึ่ง</label>
-              <div class="room-image-choice">
-                <div class="image-choice-box">
-                  <span>ใส่ลิงก์รูป QR-code</span>
-                  <input type="url" id="settingQrCodeUrl" placeholder="https://..." />
-                </div>
-                <div class="choice-or">หรือ</div>
-                <label class="image-upload-box" for="settingQrCodeFileInput">
-                  <input type="file" id="settingQrCodeFileInput" accept="image/*" />
-                  <strong>อัปโหลด QR-code</strong>
-                  <span id="settingQrCodeFileName">ยังไม่ได้เลือกไฟล์</span>
-                  <small>รองรับ JPG, PNG, WEBP ขนาดไม่เกิน 5MB</small>
-                </label>
-              </div>
-              <small class="input-hint">ถ้าใส่ลิงก์ไว้แล้ว ปุ่ม QR-code จะโชว์ในหน้าชำระเงินทันที</small>
             </div>
             <div class="field full">
               <label>นโยบายที่พัก</label>
@@ -612,6 +728,7 @@
           <div class="section-mini-head">
             <h4>🏠 เพิ่มห้องพัก</h4>
             <p>ห้องใหม่จะไปแสดงที่หน้าลูกค้า</p>
+            <button type="button" class="panel-close-btn" onclick="closeAdminPanel('rooms')" aria-label="ปิด">✕</button>
           </div>
           <form id="roomForm" class="settings-form">
             <div class="field">
@@ -628,18 +745,15 @@
               <small class="input-hint">ระบบจะแสดงรายละเอียดตามที่พิมพ์ เหมือนนโยบายที่พัก</small>
             </div>
             <div class="field full">
-              <label>รูปห้องพัก เลือกอย่างใดอย่างหนึ่งเท่านั้น</label>
+              <label>รูปห้องพัก</label>
               <div class="room-image-choice">
-                <div class="image-choice-box">
-                  <span>ใส่ลิงก์รูปภาพ</span>
-                  <input type="url" id="roomImageInput" placeholder="https://..." />
-                </div>
-                <div class="choice-or">หรือ</div>
+                <input type="hidden" id="roomImageInput" value="" />
                 <label class="image-upload-box" for="roomImageFileInput">
                   <input type="file" id="roomImageFileInput" accept="image/jpeg,image/png,image/webp" />
                   <strong>อัปโหลดรูปภาพ</strong>
                   <span id="roomImageFileName">ยังไม่ได้เลือกไฟล์</span>
                   <small>รองรับ JPG, PNG, WEBP ขนาดไม่เกิน 5MB</small>
+                  <img class="upload-preview hidden" id="roomImagePreview" alt="ตัวอย่างรูปห้องพัก" />
                 </label>
               </div>
               <small class="input-hint">แนะนำให้อัปโหลดไฟล์ JPG/PNG/WEBP โดยตรง หลีกเลี่ยงลิงก์ Facebook/Line เพราะลิงก์อาจหมดอายุ</small>
@@ -654,21 +768,49 @@
         <div class="section-mini-head">
           <h4>📋 รายการห้องพัก</h4>
           <p>แก้ไขราคา/รายละเอียด หรือปิดการแสดงผลได้</p>
+          <button type="button" class="panel-close-btn" onclick="closeAdminPanel('roomlist')" aria-label="ปิด">✕</button>
         </div>
-        <div class="table-wrap compact">
-          <table>
-            <thead>
-              <tr>
-                <th>ห้อง</th><th>ราคา</th><th>รายละเอียด</th>
-                <th>รูปภาพ</th><th>สถานะ</th><th>จัดการ</th>
-              </tr>
-            </thead>
-            <tbody id="roomTable">
-              <tr><td colspan="6" class="empty">กำลังโหลดห้องพัก...</td></tr>
-            </tbody>
-          </table>
+        <div class="room-card-grid" id="roomTable">
+          <div class="empty">กำลังโหลดห้องพัก...</div>
         </div>
       </section>
+
+      <div class="modal-overlay hidden" id="roomCloseModal" onclick="if(event.target.id==='roomCloseModal') cancelRoomCloseModal()">
+        <div class="modal-card room-close-card">
+          <div class="modal-head">
+            <div>
+              <span class="pill">ปิดห้องพัก</span>
+              <h3 id="roomCloseTitle">เลือกวันที่สิ้นสุด</h3>
+            </div>
+            <button type="button" class="modal-close-btn" onclick="cancelRoomCloseModal()" aria-label="ปิด">✕</button>
+          </div>
+          <p class="room-close-note" id="roomCloseNote">เลือกวันที่ที่ต้องการปิดห้องถึงวันนั้น</p>
+          <div class="room-close-calendar">
+            <div class="calendar-head">
+              <button type="button" id="roomClosePrevBtn">‹</button>
+              <strong id="roomCloseMonthText">-</strong>
+              <button type="button" id="roomCloseNextBtn">›</button>
+            </div>
+            <div class="calendar-weekdays">
+              <span>อา</span><span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span>
+            </div>
+            <div class="room-close-calendar-grid" id="roomCloseCalendarGrid"></div>
+          </div>
+          <div class="room-close-footer">
+            <div class="room-close-summary">
+              <span class="summary-icon">📅</span>
+              <div>
+                <span>ปิดถึงวันที่</span>
+                <strong id="roomCloseSelectedText">ยังไม่ได้เลือก</strong>
+              </div>
+            </div>
+            <div class="room-close-actions">
+              <button type="button" class="room-close-cancel" onclick="cancelRoomCloseModal()">ยกเลิก</button>
+              <button type="button" class="room-close-confirm" id="roomCloseConfirmBtn" onclick="confirmRoomCloseModal()" disabled>ยืนยันปิดห้อง</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- ===== ดูรายละเอียดทั้งหมด ===== -->
       <section class="admin-card admin-calendar-card" id="allDetails">
@@ -814,6 +956,16 @@
         roomsEl.classList.remove('visible');
         if (isHidden) roomListEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
+    }
+
+    function closeAdminPanel(name) {
+      const settingsEl = document.getElementById('settingsPanel');
+      const roomsEl    = document.getElementById('roomsPanel');
+      const roomListEl = document.getElementById('roomListPanel');
+
+      if (name === 'settings') settingsEl.classList.remove('visible');
+      if (name === 'rooms') roomsEl.classList.remove('visible');
+      if (name === 'roomlist') roomListEl.style.display = 'none';
     }
   </script>
 </body>

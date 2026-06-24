@@ -82,6 +82,99 @@ function applyBrandAssets(settings = {}, pageSuffix = "") {
   });
 }
 
+function emvField(id, value) {
+  const data = String(value || "");
+  return `${id}${String(data.length).padStart(2, "0")}${data}`;
+}
+
+function crc16CcittFalse(value) {
+  let crc = 0xFFFF;
+
+  for (let i = 0; i < value.length; i += 1) {
+    crc ^= value.charCodeAt(i) << 8;
+
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
+      crc &= 0xFFFF;
+    }
+  }
+
+  return crc.toString(16).toUpperCase().padStart(4, "0");
+}
+
+function normalizePromptPayTarget(value) {
+  const raw = String(value || "").trim();
+  const digits = raw.replace(/\D/g, "");
+
+  if (!digits) return null;
+
+  if (digits.length === 10 && digits.startsWith("0")) {
+    return { tag: "01", value: `0066${digits.slice(1)}` };
+  }
+
+  if (digits.length === 11 && digits.startsWith("66")) {
+    return { tag: "01", value: `00${digits}` };
+  }
+
+  if (digits.length === 13) {
+    return { tag: "02", value: digits };
+  }
+
+  if (digits.length === 15) {
+    return { tag: "03", value: digits };
+  }
+
+  return null;
+}
+
+function buildPromptPayPayload(payeeId, amount) {
+  const target = normalizePromptPayTarget(payeeId);
+  const paymentAmount = Number(amount || 0);
+
+  if (!target) return "";
+
+  const merchantInfo = emvField("00", "A000000677010111") + emvField(target.tag, target.value);
+  const amountField = paymentAmount > 0 ? emvField("54", paymentAmount.toFixed(2)) : "";
+  const payloadWithoutCrc = [
+    emvField("00", "01"),
+    emvField("01", "12"),
+    emvField("29", merchantInfo),
+    emvField("53", "764"),
+    amountField,
+    emvField("58", "TH")
+  ].join("") + "6304";
+
+  return payloadWithoutCrc + crc16CcittFalse(payloadWithoutCrc);
+}
+
+function buildTransferQrText(settings = {}, amount = 0) {
+  const bankName = settings.bankName?.value || DEFAULT_SETTINGS.bankName.value || "";
+  const accountName = settings.bankAccountName?.value || DEFAULT_SETTINGS.bankAccountName.value || "";
+  const accountNumber = settings.bankAccountNumber?.value || DEFAULT_SETTINGS.bankAccountNumber.value || "";
+
+  return [
+    "TRANSFER",
+    `BANK:${bankName}`,
+    `ACCOUNT_NAME:${accountName}`,
+    `ACCOUNT_NUMBER:${accountNumber}`,
+    `AMOUNT:${Number(amount || 0).toFixed(2)}`
+  ].join("\n");
+}
+
+function buildPaymentQrPayload(settings = {}, amount = 0) {
+  const promptPayId = String(settings.promptPayId?.value || settings.bankAccountNumber?.value || "").trim();
+  return buildPromptPayPayload(promptPayId, amount) || buildTransferQrText(settings, amount);
+}
+
+function getPaymentQrImageUrl(settings = {}, amount = 0, size = 260) {
+  const payload = buildPaymentQrPayload(settings, amount);
+  const qrSize = Math.max(160, Math.min(Number(size || 260), 420));
+
+  if (!payload) return "";
+
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}x${qrSize}&margin=10&data=${encodeURIComponent(payload)}`;
+}
+
 async function apiRequest(payload) {
   if (!isGoogleSheetReady) {
     return localApiRequest(payload);
@@ -179,7 +272,21 @@ async function localApiRequest(payload) {
   }
 
   if (payload.action === "updateRoom") {
-    rooms = rooms.map(room => room.id === payload.id ? { ...room, ...(payload.room || {}) } : room);
+    const payloadRoom = payload.room || {};
+    const nextRoom = {
+      ...payloadRoom,
+      imageUpload: undefined
+    };
+
+    if (payloadRoom.imageUpload) {
+      nextRoom.image = `data:${payloadRoom.imageUpload.mimeType};base64,${payloadRoom.imageUpload.base64}`;
+    } else if (Object.prototype.hasOwnProperty.call(payloadRoom, "image")) {
+      nextRoom.image = payloadRoom.image;
+    } else {
+      delete nextRoom.image;
+    }
+
+    rooms = rooms.map(room => room.id === payload.id ? { ...room, ...nextRoom } : room);
     localSaveRooms(rooms);
     return { ok: true, mode: "local" };
   }
@@ -246,6 +353,7 @@ function normalizeRooms(rooms) {
   return data.map(room => ({
     ...room,
     price: Number(room.price || 0),
+    closedUntil: String(room.closedUntil || "").trim(),
     active: room.active === true || room.active === "TRUE" || room.active === "true" || room.active === 1
   }));
 }

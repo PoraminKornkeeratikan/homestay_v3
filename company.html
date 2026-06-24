@@ -148,6 +148,7 @@
     .co-pkg-item .pkg-label { font-size: .82rem; font-weight: 600; color: #111827; }
     .co-pkg-item .pkg-credits { font-size: .75rem; color: #6b7280; }
     .co-pkg-item .pkg-price { font-size: .85rem; font-weight: 700; color: #16a34a; margin-top: .15rem; }
+    .co-pkg-item .pkg-rate { font-size: .72rem; font-weight: 800; color: #14533f; margin-top: .12rem; }
     .co-pkg-selected { background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: .6rem; padding: .6rem .85rem; margin-top: .6rem; }
     .co-pkg-price-badge { background: #16a34a; color: #fff; border-radius: .4rem; padding: .15rem .6rem; font-size: .8rem; font-weight: 700; }
 
@@ -305,6 +306,7 @@
           <div class="pkg-label">${pkg.label}</div>
           <div class="pkg-credits">${pkg.credits} เครดิต</div>
           <div class="pkg-price">฿${pkg.price.toLocaleString()}</div>
+          ${pkg.unitCost ? `<div class="pkg-rate">${pkg.unitCost}</div>` : ""}
         </div>
       `).join('');
     }

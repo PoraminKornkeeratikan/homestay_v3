@@ -43,6 +43,7 @@ const DEFAULT_SETTINGS = {
   bankName: { label: "ธนาคาร", value: "ธ.กสิกรไทย" },
   bankAccountName: { label: "ชื่อบัญชี", value: "GreenStay Homestay" },
   bankAccountNumber: { label: "เลขบัญชี", value: "123-4-56789-0" },
+  promptPayId: { label: "เลขพร้อมเพย์สำหรับ QR", value: "" },
   pageUrl: { label: "ลิงก์เพจ", value: "" },
   gpsUrl: { label: "ลิงก์ GPS", value: "" },
   qrCodeUrl: { label: "QR-code ชำระเงิน", value: "" },
@@ -59,13 +60,20 @@ const BOOKING_FEE = 20;
 const CREDIT_PER_BOOKING = 10;   // เครดิตที่ใช้ต่อการจอง 1 ครั้ง
 const COMPANY_PASSWORD = "1234"; // รหัสผ่านหน้า company
 
+const TOPUP_PAYMENT_SETTINGS = {
+  bankName: { label: "ช่องทางรับเงิน", value: "พร้อมเพย์" },
+  bankAccountName: { label: "ชื่อบัญชี", value: "ปรมินทร์ กรกีรติการ" },
+  bankAccountNumber: { label: "เลขพร้อมเพย์", value: "0938160831" },
+  promptPayId: { label: "เลขพร้อมเพย์สำหรับ QR", value: "0938160831" }
+};
+
 const CREDIT_PACKAGES = [
-  { credits: 500,  price: 1100,  label: "🥉 Starter" },
-  { credits: 1000, price: 2000,  label: "🥈 Basic" },
-  { credits: 2000, price: 3500,  label: "🥇 Pro2,000" },
-  { credits: 3500, price: 5500,  label: "💎 Business" },
-  { credits: 5000, price: 7000,  label: "👑 Ultimate" },
-  { credits: 0,    price: 12000, label: "⚡ Apex", type: "yearly" },
+  { credits: 500,  price: 1100,  label: "🥉 Starter",  unitCost: "฿22/จอง" },
+  { credits: 1000, price: 2000,  label: "🥈 Basic",    unitCost: "฿20/จอง" },
+  { credits: 2000, price: 3500,  label: "🥇 Pro",      unitCost: "฿17.50/จอง" },
+  { credits: 3500, price: 5500,  label: "💎 Business", unitCost: "฿15.70/จอง" },
+  { credits: 5000, price: 7000,  label: "👑 Ultimate", unitCost: "฿14/จอง" },
+  { credits: 0,    price: 19000, label: "📅 รายปี",    unitCost: "฿1,900/เดือน", type: "yearly" },
 ];
 
 // helpers เครดิต (ใช้ localStorage key: hs_credits, hs_plan, hs_plan_start, hs_plan_type)

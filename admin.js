@@ -3,6 +3,9 @@ let rooms = [];
 let settings = normalizeSettings(DEFAULT_SETTINGS);
 let adminCalendarDate = new Date();
 let adminSelectedDateKey = "";
+let roomCloseTargetId = "";
+let roomCloseCalendarDate = new Date();
+let roomCloseSelectedDate = "";
 
 const adminLoginBox = document.getElementById("adminLoginBox");
 const adminDashboard = document.getElementById("adminDashboard");
@@ -21,6 +24,15 @@ const adminCalendarMonthText = document.getElementById("adminCalendarMonthText")
 const adminCalendarGrid = document.getElementById("adminCalendarGrid");
 const adminSelectedDateText = document.getElementById("adminSelectedDateText");
 const adminDateDetailList = document.getElementById("adminDateDetailList");
+const roomCloseModal = document.getElementById("roomCloseModal");
+const roomCloseTitle = document.getElementById("roomCloseTitle");
+const roomCloseNote = document.getElementById("roomCloseNote");
+const roomClosePrevBtn = document.getElementById("roomClosePrevBtn");
+const roomCloseNextBtn = document.getElementById("roomCloseNextBtn");
+const roomCloseMonthText = document.getElementById("roomCloseMonthText");
+const roomCloseCalendarGrid = document.getElementById("roomCloseCalendarGrid");
+const roomCloseSelectedText = document.getElementById("roomCloseSelectedText");
+const roomCloseConfirmBtn = document.getElementById("roomCloseConfirmBtn");
 
 const settingsForm = document.getElementById("settingsForm");
 const settingMookataPrice = document.getElementById("settingMookataPrice");
@@ -28,14 +40,13 @@ const settingExtraBedPrice = document.getElementById("settingExtraBedPrice");
 const settingBankName = document.getElementById("settingBankName");
 const settingBankAccountName = document.getElementById("settingBankAccountName");
 const settingBankAccountNumber = document.getElementById("settingBankAccountNumber");
+const settingPromptPayId = document.getElementById("settingPromptPayId");
 const settingPageUrl = document.getElementById("settingPageUrl");
 const settingGpsUrl = document.getElementById("settingGpsUrl");
 const settingSiteName = document.getElementById("settingSiteName");
 const settingLogoFileInput = document.getElementById("settingLogoFileInput");
 const settingLogoFileName = document.getElementById("settingLogoFileName");
-const settingQrCodeUrl = document.getElementById("settingQrCodeUrl");
-const settingQrCodeFileInput = document.getElementById("settingQrCodeFileInput");
-const settingQrCodeFileName = document.getElementById("settingQrCodeFileName");
+const settingLogoPreview = document.getElementById("settingLogoPreview");
 const settingPropertyPolicy = document.getElementById("settingPropertyPolicy");
 const settingPaymentNote = document.getElementById("settingPaymentNote");
 
@@ -46,6 +57,7 @@ const roomDetailInput = document.getElementById("roomDetailInput");
 const roomImageInput = document.getElementById("roomImageInput");
 const roomImageFileInput = document.getElementById("roomImageFileInput");
 const roomImageFileName = document.getElementById("roomImageFileName");
+const roomImagePreview = document.getElementById("roomImagePreview");
 
 function formatMultiline(value) {
   return escapeHtml(value || "").replace(/\r?\n/g, "<br>");
@@ -185,6 +197,10 @@ async function loadDashboard() {
     rooms = normalizeRooms(payload.rooms || []);
     settings = normalizeSettings(payload.settings || {});
     applyBrandAssets(settings);
+    if (!adminSelectedDateKey) {
+      adminSelectedDateKey = toDateKey(new Date());
+      adminCalendarDate = new Date();
+    }
 
     renderSettingsForm();
     renderRoomTable();
@@ -207,6 +223,7 @@ function renderSettingsForm() {
   settingBankName.value = settings.bankName.value || "";
   settingBankAccountName.value = settings.bankAccountName.value || "";
   settingBankAccountNumber.value = settings.bankAccountNumber.value || "";
+  if (settingPromptPayId) settingPromptPayId.value = settings.promptPayId?.value || "";
   settingPageUrl.value = settings.pageUrl?.value || "";
   settingGpsUrl.value = settings.gpsUrl?.value || "";
   const currentLogoValue = settings.logoUrl?.value || "";
@@ -216,9 +233,7 @@ function renderSettingsForm() {
       ? "กำลังใช้โลโก้ที่อัปโหลดไว้"
       : "กำลังใช้โลโก้ที่บันทึกไว้"))
     : "ยังไม่ได้เลือกไฟล์";
-  settingQrCodeUrl.value = settings.qrCodeUrl?.value || "";
-  settingQrCodeFileInput.value = "";
-  updateQrCodeChoiceState();
+  clearImagePreview(settingLogoPreview);
   settingPropertyPolicy.value = settings.propertyPolicy?.value || "";
   if (settingPaymentNote) settingPaymentNote.value = settings.paymentNote.value || "";
 }
@@ -227,13 +242,6 @@ async function saveSettings(event) {
   event.preventDefault();
 
   const logoFile = settingLogoFileInput.files && settingLogoFileInput.files[0];
-  const qrUrl = settingQrCodeUrl.value.trim();
-  const qrFile = settingQrCodeFileInput.files && settingQrCodeFileInput.files[0];
-
-  if (qrUrl && qrFile) {
-    showToast("QR-code เลือกได้อย่างใดอย่างหนึ่งเท่านั้น: ใส่ลิงก์ หรืออัปโหลดรูป");
-    return;
-  }
 
   let logoSetting = {
     label: "โลโก้",
@@ -264,33 +272,6 @@ async function saveSettings(event) {
     };
   }
 
-  let qrCodeSetting = {
-    label: "QR-code ชำระเงิน",
-    value: qrUrl
-  };
-
-  if (qrFile) {
-    const maxSize = 5 * 1024 * 1024;
-
-    if (qrFile.size > maxSize) {
-      showToast("รูป QR-code ต้องมีขนาดไม่เกิน 5MB");
-      return;
-    }
-
-    if (!qrFile.type.startsWith("image/")) {
-      showToast("กรุณาอัปโหลดไฟล์รูปภาพ QR-code เท่านั้น");
-      return;
-    }
-
-    qrCodeSetting = {
-      label: "QR-code ชำระเงิน",
-      value: "",
-      fileName: qrFile.name,
-      mimeType: qrFile.type,
-      base64: await fileToBase64(qrFile)
-    };
-  }
-
   const newSettings = {
     siteName: { label: "ชื่อเว็บไซต์", value: settingSiteName.value.trim() || DEFAULT_SETTINGS.siteName.value },
     logoUrl: logoSetting,
@@ -299,9 +280,9 @@ async function saveSettings(event) {
     bankName: { label: "ธนาคาร", value: settingBankName.value.trim() },
     bankAccountName: { label: "ชื่อบัญชี", value: settingBankAccountName.value.trim() },
     bankAccountNumber: { label: "เลขบัญชี", value: settingBankAccountNumber.value.trim() },
+    promptPayId: { label: "เลขพร้อมเพย์สำหรับ QR", value: settingPromptPayId?.value.trim() || "" },
     pageUrl: { label: "ลิงก์เพจ", value: settingPageUrl.value.trim() },
     gpsUrl: { label: "ลิงก์ GPS", value: settingGpsUrl.value.trim() },
-    qrCodeUrl: qrCodeSetting,
     propertyPolicy: { label: "นโยบายที่พัก", value: settingPropertyPolicy.value.trim() }
   };
 
@@ -311,7 +292,7 @@ async function saveSettings(event) {
     settings = normalizeSettings(result.data || newSettings);
     applyBrandAssets(settings);
     renderSettingsForm();
-    showToast("บันทึกชื่อเว็บ โลโก้ ราคา บัญชีโอน และ QR-code แล้ว");
+    showToast("บันทึกชื่อเว็บ โลโก้ ราคา และบัญชีโอนแล้ว");
   } catch (error) {
     console.error(error);
     showToast("บันทึกการตั้งค่าไม่สำเร็จ");
@@ -334,54 +315,39 @@ function fileToBase64(file) {
 }
 
 function updateRoomImageChoiceState() {
-  const hasUrl = Boolean(roomImageInput.value.trim());
   const file = roomImageFileInput.files && roomImageFileInput.files[0];
-
   roomImageFileName.textContent = file ? file.name : "ยังไม่ได้เลือกไฟล์";
-
-  if (hasUrl) {
-    roomImageFileInput.disabled = true;
-    roomImageFileName.textContent = "ปิดอัปโหลด เพราะเลือกใช้ลิงก์แล้ว";
-  } else {
-    roomImageFileInput.disabled = false;
-  }
-
-  if (file) {
-    roomImageInput.disabled = true;
-    roomImageInput.placeholder = "ปิดช่องลิงก์ เพราะเลือกอัปโหลดรูปแล้ว";
-  } else {
-    roomImageInput.disabled = false;
-    roomImageInput.placeholder = "https://...";
-  }
+  updateImagePreview(roomImageFileInput, roomImagePreview);
 }
 
 function updateLogoChoiceState() {
   const file = settingLogoFileInput.files && settingLogoFileInput.files[0];
   settingLogoFileName.textContent = file ? file.name : (settings.logoUrl?.value ? "กำลังใช้โลโก้ที่บันทึกไว้" : "ยังไม่ได้เลือกไฟล์");
+  updateImagePreview(settingLogoFileInput, settingLogoPreview);
 }
 
-function updateQrCodeChoiceState() {
-  const hasUrl = Boolean(settingQrCodeUrl.value.trim());
-  const file = settingQrCodeFileInput.files && settingQrCodeFileInput.files[0];
-
-  settingQrCodeFileName.textContent = file ? file.name : "ยังไม่ได้เลือกไฟล์";
-
-  if (hasUrl) {
-    settingQrCodeFileInput.disabled = true;
-    settingQrCodeFileName.textContent = "ปิดอัปโหลด เพราะเลือกใช้ลิงก์แล้ว";
-  } else {
-    settingQrCodeFileInput.disabled = false;
-  }
-
-  if (file) {
-    settingQrCodeUrl.disabled = true;
-    settingQrCodeUrl.placeholder = "ปิดช่องลิงก์ เพราะเลือกอัปโหลด QR-code แล้ว";
-  } else {
-    settingQrCodeUrl.disabled = false;
-    settingQrCodeUrl.placeholder = "https://...";
-  }
+function clearImagePreview(preview) {
+  if (!preview) return;
+  if (preview.dataset.objectUrl) URL.revokeObjectURL(preview.dataset.objectUrl);
+  preview.removeAttribute("src");
+  preview.dataset.objectUrl = "";
+  preview.classList.add("hidden");
 }
 
+function updateImagePreview(input, preview) {
+  const file = input?.files && input.files[0];
+
+  if (!preview) return;
+
+  clearImagePreview(preview);
+
+  if (!file || !file.type.startsWith("image/")) return;
+
+  const objectUrl = URL.createObjectURL(file);
+  preview.src = objectUrl;
+  preview.dataset.objectUrl = objectUrl;
+  preview.classList.remove("hidden");
+}
 
 async function createRoom(event) {
   event.preventDefault();
@@ -389,13 +355,8 @@ async function createRoom(event) {
   const imageUrl = roomImageInput.value.trim();
   const imageFile = roomImageFileInput.files && roomImageFileInput.files[0];
 
-  if (imageUrl && imageFile) {
-    showToast("กรุณาเลือกอย่างใดอย่างหนึ่งเท่านั้น: ใส่ลิงก์ หรืออัปโหลดรูป");
-    return;
-  }
-
-  if (!imageUrl && !imageFile) {
-    showToast("กรุณาใส่ลิงก์รูป หรืออัปโหลดรูปอย่างใดอย่างหนึ่ง");
+  if (!imageFile) {
+    showToast("กรุณาอัปโหลดรูปห้องพัก");
     return;
   }
 
@@ -441,6 +402,7 @@ async function createRoom(event) {
     if (!result.ok) throw new Error(result.message || "เพิ่มห้องไม่สำเร็จ");
     roomForm.reset();
     updateRoomImageChoiceState();
+    clearImagePreview(roomImagePreview);
     await loadDashboard();
     showToast("เพิ่มห้องพักแล้ว");
   } catch (error) {
@@ -468,16 +430,20 @@ function renderRoomTable() {
       </td>
       <td class="room-image-admin-cell">
         ${renderAdminImageBlock(room.image || "", room.name)}
-        <input class="inline-input image-url-input" id="room-image-${room.id}" value="${escapeHtml(room.image || "")}" placeholder="ลิงก์รูป" />
-        <small>ถ้ารูปไม่ขึ้น ให้ใช้อัปโหลดไฟล์แทนลิงก์ Facebook/Line</small>
+        <label class="inline-file-box" for="room-image-file-${room.id}">
+          <input type="file" id="room-image-file-${room.id}" accept="image/jpeg,image/png,image/webp" onchange="updateRoomTableFileName('${room.id}')" />
+          <span>อัปโหลดรูปใหม่</span>
+          <small id="room-image-file-name-${room.id}">ยังไม่ได้เลือกไฟล์</small>
+          <img class="upload-preview table-upload-preview hidden" id="room-image-preview-${room.id}" alt="ตัวอย่างรูปใหม่" />
+        </label>
       </td>
       <td>
-        <span class="status ${room.active ? "confirmed" : "cancelled"}">${room.active ? "เปิดจอง" : "ปิดไว้"}</span>
+        <span class="status ${isRoomOpenOnDate(room, toDateKey(new Date())) ? "confirmed" : "cancelled"}">${roomStatusText(room)}</span>
       </td>
       <td>
         <div class="action-row">
           <button onclick="saveRoom('${room.id}')">บันทึก</button>
-          <button onclick="toggleRoom('${room.id}', ${room.active ? "false" : "true"})">${room.active ? "ปิด" : "เปิด"}</button>
+          <button onclick="toggleRoom('${room.id}', ${isRoomOpenOnDate(room, toDateKey(new Date())) ? "false" : "true"})">${isRoomOpenOnDate(room, toDateKey(new Date())) ? "ปิด" : "เปิด"}</button>
           <button class="danger-btn" onclick="deleteRoom('${room.id}')">ลบ</button>
         </div>
       </td>
@@ -485,13 +451,108 @@ function renderRoomTable() {
   `).join("");
 }
 
+function updateRoomTableFileName(id) {
+  const input = document.getElementById(`room-image-file-${id}`);
+  const label = document.getElementById(`room-image-file-name-${id}`);
+  const preview = document.getElementById(`room-image-preview-${id}`);
+  const file = input?.files && input.files[0];
+  if (label) label.textContent = file ? file.name : "ยังไม่ได้เลือกไฟล์";
+  updateImagePreview(input, preview);
+}
+
+function renderRoomTable() {
+  if (!rooms.length) {
+    roomTable.innerHTML = `<div class="empty">ยังไม่มีห้องพัก</div>`;
+    return;
+  }
+
+  const todayKey = toDateKey(new Date());
+
+  roomTable.innerHTML = rooms.map(room => {
+    const isOpen = isRoomOpenOnDate(room, todayKey);
+    const closedUntil = String(room.closedUntil || "").trim();
+
+    return `
+      <article class="room-admin-card ${isOpen ? "" : "is-closed"}">
+        <div class="room-admin-media">
+          ${renderAdminImageBlock(room.image || "", room.name)}
+        </div>
+
+        <div class="room-admin-main">
+          <div class="room-admin-top">
+            <div class="room-admin-title">
+              <span>ห้องพัก</span>
+              <input class="inline-input room-title-input" id="room-name-${room.id}" value="${escapeHtml(room.name)}" />
+            </div>
+            <span class="status ${isOpen ? "confirmed" : "cancelled"}">${roomStatusText(room)}</span>
+          </div>
+
+          <div class="room-admin-fields">
+            <label class="room-admin-field price-field">
+              <span>ราคา / คืน</span>
+              <input class="inline-input" type="number" id="room-price-${room.id}" value="${Number(room.price || 0)}" />
+            </label>
+
+            <label class="room-admin-field detail-field">
+              <span>รายละเอียด</span>
+              <textarea class="inline-input inline-textarea" id="room-detail-${room.id}" rows="5">${escapeHtml(room.detail || "")}</textarea>
+            </label>
+
+            <div class="room-admin-field upload-field">
+              <span>รูปภาพ</span>
+              <label class="inline-file-box" for="room-image-file-${room.id}">
+                <input type="file" id="room-image-file-${room.id}" accept="image/jpeg,image/png,image/webp" onchange="updateRoomTableFileName('${room.id}')" />
+                <span>อัปโหลดรูปใหม่</span>
+                <small id="room-image-file-name-${room.id}">ยังไม่ได้เลือกไฟล์</small>
+                <img class="upload-preview table-upload-preview hidden" id="room-image-preview-${room.id}" alt="ตัวอย่างรูปใหม่" />
+              </label>
+            </div>
+          </div>
+
+          ${closedUntil && !isOpen ? `<div class="room-closed-note">ปิดการจองถึง ${formatThaiDate(closedUntil)}</div>` : ""}
+
+          <div class="room-card-actions">
+            <button type="button" class="save-room-btn" onclick="saveRoom('${room.id}')">บันทึก</button>
+            <button type="button" class="toggle-room-btn ${isOpen ? "close-mode" : "open-mode"}" onclick="${isOpen ? `openRoomCloseModal('${room.id}')` : `toggleRoom('${room.id}', true)`}">
+              ${isOpen ? "ปิดห้อง" : "เปิดใช้งาน"}
+            </button>
+            <button type="button" class="danger-btn" onclick="deleteRoom('${room.id}')">ลบ</button>
+          </div>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
 async function saveRoom(id) {
+  const imageInput = document.getElementById(`room-image-file-${id}`);
+  const imageFile = imageInput?.files && imageInput.files[0];
   const room = {
     name: document.getElementById(`room-name-${id}`).value.trim(),
     price: Number(document.getElementById(`room-price-${id}`).value || 0),
-    detail: document.getElementById(`room-detail-${id}`).value.trim(),
-    image: document.getElementById(`room-image-${id}`).value.trim()
+    detail: document.getElementById(`room-detail-${id}`).value.trim()
   };
+
+  if (imageFile) {
+    const maxSize = 5 * 1024 * 1024;
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+    if (imageFile.size > maxSize) {
+      showToast("รูปภาพต้องมีขนาดไม่เกิน 5MB");
+      return;
+    }
+
+    if (!allowedTypes.includes(imageFile.type)) {
+      showToast("กรุณาใช้รูป JPG, PNG หรือ WEBP เท่านั้น");
+      return;
+    }
+
+    room.imageUpload = {
+      fileName: imageFile.name,
+      mimeType: imageFile.type,
+      base64: await fileToBase64(imageFile)
+    };
+  }
 
   try {
     const result = await apiRequest({ action: "updateRoom", id, room });
@@ -506,10 +567,146 @@ async function saveRoom(id) {
 
 async function toggleRoom(id, active) {
   try {
-    const result = await apiRequest({ action: "updateRoom", id, room: { active } });
+    const roomUpdate = { active, closedUntil: "" };
+
+    if (!active) {
+      const todayKey = toDateKey(new Date());
+      const closedUntil = prompt("ต้องการปิดห้องนี้ถึงวันที่เท่าไหร่? (รูปแบบ YYYY-MM-DD)", todayKey);
+
+      if (closedUntil === null) return;
+
+      const cleanDate = String(closedUntil || "").trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
+        showToast("กรุณาใส่วันที่รูปแบบ YYYY-MM-DD เช่น 2026-06-24");
+        return;
+      }
+
+      if (cleanDate < todayKey) {
+        showToast("วันที่ปิดต้องไม่เป็นวันย้อนหลัง");
+        return;
+      }
+
+      roomUpdate.closedUntil = cleanDate;
+    }
+
+    const result = await apiRequest({ action: "updateRoom", id, room: roomUpdate });
     if (!result.ok) throw new Error(result.message || "เปลี่ยนสถานะไม่สำเร็จ");
     await loadDashboard();
-    showToast(active ? "เปิดห้องให้จองแล้ว" : "ปิดห้องพักแล้ว");
+    showToast(active ? "เปิดห้องให้จองแล้ว" : `ปิดห้องพักถึง ${formatThaiDate(roomUpdate.closedUntil)} แล้ว`);
+  } catch (error) {
+    console.error(error);
+    showToast("เปลี่ยนสถานะห้องไม่สำเร็จ");
+  }
+}
+
+function openRoomCloseModal(id) {
+  const room = rooms.find(item => String(item.id) === String(id));
+  if (!room || !roomCloseModal) return;
+
+  const today = new Date();
+  const currentClosedUntil = String(room.closedUntil || "").trim();
+  const selected = currentClosedUntil && currentClosedUntil >= toDateKey(today) ? fromDateKey(currentClosedUntil) : today;
+
+  roomCloseTargetId = id;
+  roomCloseSelectedDate = toDateKey(selected);
+  roomCloseCalendarDate = new Date(selected.getFullYear(), selected.getMonth(), 1);
+
+  if (roomCloseTitle) roomCloseTitle.textContent = `ปิดห้อง ${room.name || ""}`;
+  if (roomCloseNote) roomCloseNote.textContent = "เลือกวันที่สุดท้ายที่ต้องการปิดห้อง หลังจากวันนั้นลูกค้าจะกลับมาจองได้เอง";
+
+  roomCloseModal.classList.remove("hidden");
+  renderRoomCloseCalendar();
+}
+
+function cancelRoomCloseModal() {
+  if (roomCloseModal) roomCloseModal.classList.add("hidden");
+  roomCloseTargetId = "";
+  roomCloseSelectedDate = "";
+}
+
+function selectRoomCloseDate(dateKey) {
+  roomCloseSelectedDate = dateKey;
+  renderRoomCloseCalendar();
+}
+
+function renderRoomCloseCalendar() {
+  if (!roomCloseCalendarGrid || !roomCloseMonthText) return;
+
+  const todayKey = toDateKey(new Date());
+  const year = roomCloseCalendarDate.getFullYear();
+  const month = roomCloseCalendarDate.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const cells = [];
+
+  roomCloseMonthText.textContent = firstDay.toLocaleDateString("th-TH", {
+    month: "long",
+    year: "numeric"
+  });
+
+  for (let i = 0; i < firstDay.getDay(); i += 1) {
+    cells.push(`<button type="button" class="room-close-day blank" disabled></button>`);
+  }
+
+  for (let day = 1; day <= lastDay.getDate(); day += 1) {
+    const date = new Date(year, month, day);
+    const key = toDateKey(date);
+    const isPast = key < todayKey;
+    const isSelected = key === roomCloseSelectedDate;
+    const isToday = key === todayKey;
+    const classes = ["room-close-day"];
+    if (isSelected) classes.push("selected");
+    if (isToday) classes.push("today");
+    if (isPast) classes.push("past");
+
+    cells.push(`
+      <button type="button" class="${classes.join(" ")}" ${isPast ? "disabled" : `onclick="selectRoomCloseDate('${key}')"`}>
+        <strong>${day}</strong>
+        ${isToday ? "<span>วันนี้</span>" : ""}
+      </button>
+    `);
+  }
+
+  roomCloseCalendarGrid.innerHTML = cells.join("");
+  if (roomCloseSelectedText) roomCloseSelectedText.textContent = roomCloseSelectedDate ? formatThaiDate(roomCloseSelectedDate) : "ยังไม่ได้เลือก";
+  if (roomCloseConfirmBtn) roomCloseConfirmBtn.disabled = !roomCloseSelectedDate;
+}
+
+async function confirmRoomCloseModal() {
+  if (!roomCloseTargetId || !roomCloseSelectedDate) {
+    showToast("กรุณาเลือกวันที่ต้องการปิดห้อง");
+    return;
+  }
+
+  await toggleRoom(roomCloseTargetId, false, roomCloseSelectedDate);
+  cancelRoomCloseModal();
+}
+
+async function toggleRoom(id, active, closedUntilValue = "") {
+  try {
+    const todayKey = toDateKey(new Date());
+    const roomUpdate = { active, closedUntil: "" };
+
+    if (!active) {
+      const cleanDate = String(closedUntilValue || "").trim();
+
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
+        openRoomCloseModal(id);
+        return;
+      }
+
+      if (cleanDate < todayKey) {
+        showToast("วันที่ปิดต้องไม่เป็นวันย้อนหลัง");
+        return;
+      }
+
+      roomUpdate.closedUntil = cleanDate;
+    }
+
+    const result = await apiRequest({ action: "updateRoom", id, room: roomUpdate });
+    if (!result.ok) throw new Error(result.message || "เปลี่ยนสถานะไม่สำเร็จ");
+    await loadDashboard();
+    showToast(active ? "เปิดห้องให้จองแล้ว" : `ปิดห้องพักถึง ${formatThaiDate(roomUpdate.closedUntil)} แล้ว`);
   } catch (error) {
     console.error(error);
     showToast("เปลี่ยนสถานะห้องไม่สำเร็จ");
@@ -552,6 +749,23 @@ function formatThaiDate(value) {
   });
 }
 
+function isRoomOpenOnDate(room, dateKey) {
+  if (!room) return false;
+  if (room.active) return true;
+
+  const closedUntil = String(room.closedUntil || "").trim();
+  if (!closedUntil) return false;
+
+  return String(dateKey || toDateKey(new Date())) > closedUntil;
+}
+
+function roomStatusText(room) {
+  if (isRoomOpenOnDate(room, toDateKey(new Date()))) return "เปิดจอง";
+
+  const closedUntil = String(room.closedUntil || "").trim();
+  return closedUntil ? `ปิดถึง ${formatThaiDate(closedUntil)}` : "ปิดไว้";
+}
+
 function isCancelledBooking(booking) {
   const status = String(booking.status || "").trim().toLowerCase();
   const paymentStatus = String(booking.paymentStatus || "").trim().toLowerCase();
@@ -572,7 +786,7 @@ function getBookingsForDate(dateKey) {
 
 function getAvailableRoomsForDate(dateKey) {
   const bookedRoomIds = new Set(getBookingsForDate(dateKey).map(booking => String(booking.roomId)));
-  return rooms.filter(room => room.active && !bookedRoomIds.has(String(room.id)));
+  return rooms.filter(room => isRoomOpenOnDate(room, dateKey) && !bookedRoomIds.has(String(room.id)));
 }
 
 function renderAdminCalendar() {
@@ -853,8 +1067,6 @@ settingSiteName.addEventListener("input", () => {
   document.title = suffix ? `${previewName} - ${suffix}` : previewName;
 });
 settingLogoFileInput.addEventListener("change", updateLogoChoiceState);
-settingQrCodeUrl.addEventListener("input", updateQrCodeChoiceState);
-settingQrCodeFileInput.addEventListener("change", updateQrCodeChoiceState);
 
 if (adminPrevMonthBtn && adminNextMonthBtn) {
   adminPrevMonthBtn.addEventListener("click", () => {
@@ -867,6 +1079,24 @@ if (adminPrevMonthBtn && adminNextMonthBtn) {
     renderAdminCalendar();
   });
 }
+
+if (roomClosePrevBtn && roomCloseNextBtn) {
+  roomClosePrevBtn.addEventListener("click", () => {
+    roomCloseCalendarDate = new Date(roomCloseCalendarDate.getFullYear(), roomCloseCalendarDate.getMonth() - 1, 1);
+    renderRoomCloseCalendar();
+  });
+
+  roomCloseNextBtn.addEventListener("click", () => {
+    roomCloseCalendarDate = new Date(roomCloseCalendarDate.getFullYear(), roomCloseCalendarDate.getMonth() + 1, 1);
+    renderRoomCloseCalendar();
+  });
+}
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && roomCloseModal && !roomCloseModal.classList.contains("hidden")) {
+    cancelRoomCloseModal();
+  }
+});
 
 
 
@@ -963,25 +1193,29 @@ function openTopupModal() {
   const grid = document.getElementById("topupPkgGrid");
   grid.innerHTML = CREDIT_PACKAGES.map(pkg => {
     const idKey = pkg.type === "yearly" ? "YEAR" : pkg.credits;
-    const creditsDesc = pkg.type === "yearly" ? "รายปี 1 ปี" : `${pkg.credits} เครดิต`;
+    const creditsDesc = pkg.type === "yearly" ? "ไม่จำกัด" : `${pkg.credits} เครดิต`;
+    const unitCost = pkg.unitCost || "";
     return `
     <div class="topup-pkg-card" id="tpkg_${idKey}" onclick="selectTopupPkg('${idKey}',${pkg.price},'${pkg.label}')">
       <div class="tpkg-label">${pkg.label}</div>
       <div class="tpkg-credits">${creditsDesc}</div>
       <div class="tpkg-price">฿${pkg.price.toLocaleString()}</div>
+      ${unitCost ? `<div class="tpkg-rate">${unitCost}</div>` : ""}
     </div>`;
   }).join("");
 
-  // load bank info from settings
-  const s = normalizeSettings ? normalizeSettings(DEFAULT_SETTINGS) : DEFAULT_SETTINGS;
-  const bankData = JSON.parse(localStorage.getItem("hs_settings") || "null");
-  const bankName   = bankData?.bankName?.value   || DEFAULT_SETTINGS.bankName.value;
-  const bankAccName = bankData?.bankAccountName?.value || DEFAULT_SETTINGS.bankAccountName.value;
-  const bankAccNo  = bankData?.bankAccountNumber?.value || DEFAULT_SETTINGS.bankAccountNumber.value;
+  // Credit package topups use the company PromptPay account, separate from the homestay room-payment account.
+  const topupSettings = typeof TOPUP_PAYMENT_SETTINGS !== "undefined"
+    ? TOPUP_PAYMENT_SETTINGS
+    : normalizeSettings(settings || DEFAULT_SETTINGS);
+  const bankName   = topupSettings.bankName?.value || "พร้อมเพย์";
+  const bankAccName = topupSettings.bankAccountName?.value || "ปรมินทร์ กรกีรติการ";
+  const bankAccNo  = topupSettings.bankAccountNumber?.value || "0938160831";
   document.getElementById("topupBankName").textContent   = bankName;
   document.getElementById("topupBankAccName").textContent = bankAccName;
   document.getElementById("topupBankAccNo").textContent   = bankAccNo;
   document.getElementById("topupAmountText").textContent  = "กรุณาเลือกแพ็กเกจ";
+  updateTopupPaymentQr(0);
 
   selectedTopupPkg = null;
   topupSlipBase64 = "";
@@ -1005,9 +1239,32 @@ function selectTopupPkg(credits, price, label) {
   document.querySelectorAll(".topup-pkg-card").forEach(c => c.classList.remove("selected"));
   const el = document.getElementById("tpkg_" + credits);
   if (el) el.classList.add("selected");
-  const desc = credits === "YEAR" ? "รายปี 1 ปี" : `${credits} เครดิต`;
+  const desc = credits === "YEAR" ? "ไม่จำกัด" : `${credits} เครดิต`;
   document.getElementById("topupAmountText").textContent = `฿${price.toLocaleString()} (${desc})`;
+  updateTopupPaymentQr(price);
   updateTopupSendBtn();
+}
+
+function updateTopupPaymentQr(amount = 0) {
+  const box = document.getElementById("topupQrBox");
+  const img = document.getElementById("topupQrImage");
+  const text = document.getElementById("topupQrAmount");
+
+  if (!box || !img) return;
+
+  if (!amount) {
+    img.removeAttribute("src");
+    box.classList.add("hidden");
+    if (text) text.textContent = "เลือกแพ็กเกจก่อน";
+    return;
+  }
+
+  const topupSettings = typeof TOPUP_PAYMENT_SETTINGS !== "undefined"
+    ? TOPUP_PAYMENT_SETTINGS
+    : normalizeSettings(settings || DEFAULT_SETTINGS);
+  img.src = getPaymentQrImageUrl(topupSettings, amount, 240);
+  box.classList.remove("hidden");
+  if (text) text.textContent = `ยอดโอน ${formatMoney(amount)}`;
 }
 
 function handleTopupSlip(e) {
@@ -1057,6 +1314,7 @@ function sendTopupRequest() {
   if (!selectedTopupPkg || !topupSlipBase64) return;
   const reqs = getTopupRequests();
   const isYearly = selectedTopupPkg.credits === "YEAR";
+  const topupReceiver = typeof TOPUP_PAYMENT_SETTINGS !== "undefined" ? TOPUP_PAYMENT_SETTINGS : {};
   const newReq = {
     id: "TR" + Date.now(),
     credits: selectedTopupPkg.credits,
@@ -1066,6 +1324,8 @@ function sendTopupRequest() {
     slipBase64: topupSlipBase64,
     slipMime: topupSlipMime,
     slipFilename: topupSlipFilename,
+    receiverName: topupReceiver.bankAccountName?.value || "ปรมินทร์ กรกีรติการ",
+    receiverPromptPay: topupReceiver.promptPayId?.value || "0938160831",
     status: "pending",
     requestedAt: new Date().toISOString()
   };
