@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="LOGO.jpg?v=2" type="image/jpeg" />
+  <link rel="shortcut icon" href="LOGO.jpg?v=2" type="image/jpeg" />
+  <link rel="apple-touch-icon" href="LOGO.jpg?v=2" />
+</head>
+<body data-page-title-suffix="จองห้องพัก">
+  <header class="topbar">
+    <a class="brand" href="customer.html">
+      <img class="site-logo" src="LOGO.jpg" alt="โลโก้โฮมสเตย์" />
+      <div>
+        <h1>Wintery House</h1>
+        <p>จองห้องพัก • โฮมสเตย์</p>
+      </div>
+    </a>
+    <nav class="customer-only-nav">
+      <a class="nav-link active" href="#bookingHistory">เช็คประวัติการจอง</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-text">
+        <span class="pill">จองง่าย • เลือกบริการเสริม • ชำระผ่านบัญชี</span>
+        <h2>จองห้องพัก พร้อมหมูกระทะและเตียงเสริม</h2>
+        <p>เลือกห้อง วันที่เข้าพัก เพิ่มบริการเสริม แล้วโอนชำระผ่านบัญชีธนาคารของโฮมสเตย์</p>
+        <div class="hero-actions">
+          <a href="#rooms" class="primary-link">ดูห้องว่าง</a>
+          <a href="#" class="secondary-link hidden" id="pageLinkBtn" target="_blank" rel="noopener">ดูเพจ</a>
+          <a href="#" class="secondary-link hidden" id="gpsLinkBtn" target="_blank" rel="noopener">ดู GPS</a>
+        </div>
+      </div>
+      <div class="hero-card">
+        <p>บรรยากาศพักผ่อน</p>
+        <strong>Green</strong>
+        <span>Minimal Homestay</span>
+      </div>
+    </section>
+
+    <section id="rooms" class="section-head">
+      <div>
+        <h3>ห้องพัก</h3>
+        <p>ข้อมูลห้องและราคาดึงจาก Google Sheet</p>
+      </div>
+      <div class="sync-status" id="syncStatus">กำลังโหลดข้อมูล...</div>
+    </section>
+
+    <div class="room-grid" id="roomGrid"></div>
+
+    <section class="history-panel" id="bookingHistory">
+      <div class="section-head">
+        <div>
+          <h3>เช็คประวัติการจอง</h3>
+          <p>กรอกเลขรายการจองเพื่อดูข้อมูลการจองของคุณ</p>
+        </div>
+      </div>
+
+      <form id="historyForm" class="history-form">
+        <input type="text" id="historyBookingCode" placeholder="เช่น GS20260623-1234" required />
+        <button type="submit">ค้นหา</button>
+      </form>
+
+      <div class="history-result hidden" id="historyResult"></div>
+    </section>
+
+    <section class="booking-panel hidden" id="bookingPanel">
+      <div class="section-head">
+        <div>
+          <h3>ฟอร์มจองห้องพัก</h3>
+          <p>กรอกข้อมูล เลือกวันเข้าพัก เลือกบริการเสริม และดูขั้นตอนชำระเงิน</p>
+        </div>
+      </div>
+
+      <div class="selected-room-banner">
+        <div>
+          <span>ห้องที่เลือก</span>
+          <strong id="selectedRoomNameText">-</strong>
+        </div>
+        <button type="button" id="changeRoomBtn">เปลี่ยนห้อง</button>
+      </div>
+
+      <form id="bookingForm" class="booking-form">
+        <div class="field">
+          <label>ชื่อผู้จอง</label>
+          <input type="text" id="guestName" placeholder="เช่น คุณว่าง" required />
+        </div>
+        <div class="field">
+          <label>เบอร์โทร</label>
+          <input type="tel" id="guestPhone" placeholder="เช่น 0812345678" required />
+        </div>
+        <div class="field">
+          <label>อีเมล</label>
+          <input type="email" id="guestEmail" placeholder="เช่น example@email.com" required />
+          <input type="hidden" id="roomType" required />
+        </div>
+        <section class="calendar-section full">
+          <div class="section-mini-head">
+            <h4>เลือกวันที่เข้าพัก</h4>
+            <p>สีเขียว = ว่าง • สีแดง = ไม่ว่าง</p>
+          </div>
+
+          <div class="date-summary">
+            <div>
+              <span>เช็กอิน</span>
+              <strong id="selectedCheckInText">ยังไม่เลือก</strong>
+            </div>
+            <div>
+              <span>เช็กเอาต์</span>
+              <strong id="selectedCheckOutText">ยังไม่เลือก</strong>
+            </div>
+            <div>
+              <span>จำนวนคืน</span>
+              <strong id="selectedNightsText">0 คืน</strong>
+            </div>
+          </div>
+
+          <input type="hidden" id="checkIn" required />
+          <input type="hidden" id="checkOut" required />
+
+          <div class="calendar-card">
+            <div class="calendar-head">
+              <button type="button" id="prevMonthBtn">‹</button>
+              <strong id="calendarMonthText">-</strong>
+              <button type="button" id="nextMonthBtn">›</button>
+            </div>
+            <div class="calendar-legend">
+              <span><i class="dot available"></i>ว่าง</span>
+              <span><i class="dot booked"></i>ไม่ว่าง</span>
+              <span><i class="dot selected"></i>วันที่เลือก</span>
+            </div>
+            <div class="calendar-weekdays">
+              <span>อา</span><span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+          </div>
+        </section>
+        <div class="field">
+          <label>จำนวนผู้เข้าพัก</label>
+          <input type="number" id="guestCount" min="1" value="2" required />
+        </div>
+
+        <section class="addon-section full">
+          <div class="section-mini-head">
+            <h4>บริการเสริม</h4>
+            <p>ราคาแก้ได้จากหน้า Admin หรือชีต Settings</p>
+          </div>
+
+          <div class="addon-grid">
+            <label class="addon-card" for="mookataCheckbox">
+              <div class="addon-left">
+                <input type="checkbox" id="mookataCheckbox" />
+                <div>
+                  <strong>หมูกระทะ</strong>
+                  <span id="mookataPriceText">กำลังโหลดราคา...</span>
+                </div>
+              </div>
+              <div class="qty-control" aria-label="จำนวนชุดหมูกระทะ">
+                <button type="button" id="mookataMinusBtn">−</button>
+                <b id="mookataQtyText">1</b>
+                <button type="button" id="mookataPlusBtn">+</button>
+              </div>
+            </label>
+
+            <label class="addon-card" for="extraBedCheckbox">
+              <div class="addon-left">
+                <input type="checkbox" id="extraBedCheckbox" />
+                <div>
+                  <strong>เตียงเสริม 1 เตียง</strong>
+                  <span id="extraBedPriceText">กำลังโหลดราคา...</span>
+                </div>
+              </div>
+              <em>เลือกได้ 1 เตียง</em>
+            </label>
+          </div>
+        </section>
+
+        <section class="payment-section full">
+          <div class="section-mini-head">
+            <h4>ขั้นตอนการชำระเงิน</h4>
+            <p>โอนผ่านบัญชีธนาคารของโฮมสเตย์</p>
+          </div>
+
+          <div class="payment-card payment-layout">
+            <div class="payment-bank-list">
+              <div>
+                <span>ธนาคาร</span>
+                <strong id="bankNameText">กำลังโหลด...</strong>
+              </div>
+              <div>
+                <span>ชื่อบัญชี</span>
+                <strong id="bankAccountNameText">กำลังโหลด...</strong>
+              </div>
+              <div class="account-copy-box">
+                <span>เลขบัญชี</span>
+                <div class="copy-account-row">
+                  <strong id="bankAccountNumberText">กำลังโหลด...</strong>
+                  <button type="button" id="copyAccountBtn">คัดลอก</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="payment-qr-box hidden" id="qrPaymentBox">
+              <span>QR-code สำหรับชำระเงิน</span>
+              <img id="qrCodeImage" alt="QR-code ชำระเงิน" />
+              <button type="button" id="downloadQrBtn">บันทึก QR-code</button>
+            </div>
+          </div>
+
+          <div class="payment-help">
+            <b>หลังโอนเงิน:</b> กรุณาแนบสลิปการโอนเงินก่อนส่งคำขอจอง หากไม่แนบสลิป ระบบจะไม่ให้ส่งจอง
+          </div>
+
+          <div class="slip-upload">
+            <label class="slip-dropzone" id="slipDropzone" for="transferSlip">
+              <input type="file" id="transferSlip" accept="image/*,.pdf" required />
+              <div class="slip-icon" id="slipIcon">📎</div>
+              <div class="slip-text">
+                <strong>แนบสลิปการโอนเงิน <b class="required-mark">*</b></strong>
+                <span>กดเลือกไฟล์ หรือลากสลิปมาวางตรงนี้</span>
+                <small>รองรับ JPG, PNG หรือ PDF ขนาดไม่เกิน 5MB</small>
+              </div>
+              <div class="slip-pill" id="slipFileName">ยังไม่ได้เลือกไฟล์</div>
+            </label>
+
+            <div class="slip-preview hidden" id="slipPreview">
+              <div class="slip-preview-thumb" id="slipPreviewThumb">
+                <img id="slipPreviewImage" alt="ตัวอย่างสลิป" />
+                <span id="slipPdfIcon">PDF</span>
+              </div>
+              <div class="slip-preview-info">
+                <b id="slipPreviewName">-</b>
+                <span id="slipPreviewSize">-</span>
+              </div>
+              <button type="button" id="clearSlipBtn">เปลี่ยนไฟล์</button>
+            </div>
+          </div>
+        </section>
+
+        <div class="field full">
+          <label>หมายเหตุการเข้าพัก</label>
+          <textarea id="note" rows="3" placeholder="เช่น ขอห้องชั้นล่าง / เข้าพักดึก"></textarea>
+        </div>
+
+        <div class="summary full">
+          <div class="summary-lines">
+            <div><span>ค่าห้อง</span><b id="roomTotalText">฿0</b></div>
+            <div><span>บริการเสริม</span><b id="addonTotalText">฿0</b></div>
+            <div><span>ค่าจอง</span><b id="bookingFeeText">฿20</b></div>
+            <div class="grand"><span>ยอดที่ต้องชำระ</span><strong id="grandTotalText">฿0</strong></div>
+          </div>
+          <button type="submit" id="submitBookingBtn">ส่งคำขอจอง</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <div class="modal-overlay hidden" id="policyModal">
+    <div class="modal-card policy-card">
+      <div class="modal-head">
+        <div>
+          <span class="pill">นโยบายที่พัก</span>
+          <h3>กรุณาอ่านก่อนจอง</h3>
+        </div>
+      </div>
+      <div class="policy-content" id="policyContent"></div>
+      <button type="button" id="acceptPolicyBtn">รับทราบและเริ่มจอง</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="bookingConfirmModal">
+    <div class="modal-card confirm-card">
+      <div class="modal-head">
+        <div>
+          <span class="pill">ตรวจสอบข้อมูลก่อนส่ง</span>
+          <h3>รายละเอียดการจอง</h3>
+        </div>
+      </div>
+
+      <div class="booking-ticket" id="bookingTicket">
+        <div class="ticket-brand">
+          <img class="site-logo" src="LOGO.jpg" alt="โลโก้โฮมสเตย์" />
+          <div>
+            <h4>GreenStay Homestay</h4>
+            <p>ใช้ยื่นตอนเข้าพัก</p>
+          </div>
+        </div>
+        <div class="ticket-code">
+          <span>เลขรายการจอง</span>
+          <strong id="ticketBookingCode">-</strong>
+        </div>
+        <div class="ticket-lines" id="ticketDetails"></div>
+      </div>
+
+      <div class="capture-warning">
+        <b>สำคัญ:</b> กรุณาแคปหน้าจอนี้ หรือกดปุ่ม “บันทึกรูปภาพ” เพื่อใช้ยื่นตอนมาเข้าพัก
+      </div>
+
+      <label class="capture-check">
+        <input type="checkbox" id="captureDoneCheck" />
+        <span>ฉันแคปหน้าจอไว้แล้ว</span>
+      </label>
+
+      <div class="modal-actions">
+        <button type="button" class="ghost-btn" id="backToEditBtn">ย้อนกลับไปแก้ข้อมูล</button>
+        <button type="button" id="saveTicketImageBtn">บันทึกรูปภาพ</button>
+        <button type="button" id="confirmSendBookingBtn" disabled>ยืนยันส่งคำจอง</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="app-config.js"></script>
+  <script src="api.js"></script>
+  <script src="customer.js"></script>
+  <script>
+    // ตรวจสอบสถานะระบบทันทีที่โหลดหน้า
+    if (!isSystemActive()) {
+      document.body.innerHTML = `
+        <div class="system-inactive-fullpage">
+          <div class="inactive-card">
+            <div class="inactive-icon">🔒</div>
+            <h2>หยุดใช้งานชั่วคราวค่ะ</h2>
+            <p>ขออภัยในความไม่สะดวก<br>ขณะนี้ระบบจองห้องพักหยุดให้บริการชั่วคราว<br>กรุณาติดต่อเจ้าหน้าที่เพื่อสอบถามข้อมูลเพิ่มเติม</p>
+          </div>
+        </div>`;
+    }
+  </script>
+</body>
+</html>
