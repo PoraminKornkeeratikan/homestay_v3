@@ -2,6 +2,10 @@ const LOCAL_BOOKING_KEY = "greenstay_bookings_backup_v3";
 const LOCAL_ROOMS_KEY = "greenstay_rooms_backup_v3";
 const LOCAL_SETTINGS_KEY = "greenstay_settings_backup_v3";
 const isGoogleSheetReady = GOOGLE_SCRIPT_URL.startsWith("https://script.google.com/");
+const isSupabaseReady = typeof SUPABASE_URL !== "undefined"
+  && typeof SUPABASE_ANON_KEY !== "undefined"
+  && /^https:\/\/.+\.supabase\.co\/?$/.test(String(SUPABASE_URL || "").trim())
+  && String(SUPABASE_ANON_KEY || "").trim().length > 20;
 
 function clone(data) {
   return JSON.parse(JSON.stringify(data));
@@ -51,8 +55,195 @@ function localSaveSettings(settings) {
   localStorage.setItem(LOCAL_SETTINGS_KEY, JSON.stringify(settings));
 }
 
+function getCurrentHomestaySlug() {
+  const params = new URLSearchParams(window.location.search);
+  return String(
+    params.get("homestay")
+    || params.get("slug")
+    || params.get("h")
+    || (typeof DEFAULT_HOMESTAY_SLUG !== "undefined" ? DEFAULT_HOMESTAY_SLUG : "Wiwahrin")
+  ).trim();
+}
+
+function supabaseBaseUrl() {
+  return String(SUPABASE_URL || "").replace(/\/rest\/v1\/?$/, "").replace(/\/$/, "");
+}
+
+async function supabaseRequest(path, options = {}) {
+  const url = `${supabaseBaseUrl()}/rest/v1/${path}`;
+  const headers = {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    "Content-Type": "application/json",
+    ...(options.headers || {})
+  };
+
+  const response = await fetch(url, { ...options, headers });
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!response.ok) {
+    const message = data?.message || data?.details || response.statusText || "Supabase request failed";
+    throw new Error(message);
+  }
+
+  return data;
+}
+
+function settingObjectFromRow(row = {}) {
+  return normalizeSettings({
+    siteName: { label: "ชื่อเว็บไซต์", value: row.site_name || DEFAULT_SETTINGS.siteName.value },
+    logoUrl: { label: "โลโก้", value: row.logo_url || DEFAULT_SETTINGS.logoUrl.value },
+    mookata: { label: "หมูกระทะ", price: Number(row.mookata_price || 0) },
+    extraBed: { label: "เตียงเสริม", price: Number(row.extra_bed_price || 0) },
+    bankName: { label: "ธนาคาร", value: row.bank_name || "" },
+    bankAccountName: { label: "ชื่อบัญชี", value: row.bank_account_name || "" },
+    bankAccountNumber: { label: "เลขบัญชี", value: row.bank_account_number || "" },
+    promptPayId: { label: "เลขพร้อมเพย์สำหรับ QR", value: row.promptpay_id || "" },
+    pageUrl: { label: "ลิงก์เพจ", value: row.page_url || "" },
+    gpsUrl: { label: "ลิงก์ GPS", value: row.gps_url || "" },
+    qrCodeUrl: { label: "QR-code ชำระเงิน", value: row.qr_code_url || "" },
+    paymentNote: { label: "หมายเหตุชำระเงิน", value: row.payment_note || "" },
+    propertyPolicy: { label: "นโยบายที่พัก", value: row.property_policy || "" }
+  });
+}
+
+function settingsRowFromObject(settings = {}, homestayId) {
+  return {
+    homestay_id: homestayId,
+    site_name: settings.siteName?.value || DEFAULT_SETTINGS.siteName.value,
+    logo_url: settings.logoUrl?.value || DEFAULT_SETTINGS.logoUrl.value,
+    mookata_price: Number(settings.mookata?.price || 0),
+    extra_bed_price: Number(settings.extraBed?.price || 0),
+    booking_fee: Number(typeof BOOKING_FEE !== "undefined" ? BOOKING_FEE : 20),
+    bank_name: settings.bankName?.value || "",
+    bank_account_name: settings.bankAccountName?.value || "",
+    bank_account_number: settings.bankAccountNumber?.value || "",
+    promptpay_id: settings.promptPayId?.value || "",
+    qr_code_url: settings.qrCodeUrl?.value || "",
+    payment_note: settings.paymentNote?.value || "",
+    property_policy: settings.propertyPolicy?.value || ""
+  };
+}
+
+function roomObjectFromRow(row = {}) {
+  return {
+    id: row.id,
+    name: row.name || "",
+    price: Number(row.price || 0),
+    detail: row.detail || "",
+    image: row.image_url || "",
+    galleryImages: Array.isArray(row.gallery_images) ? row.gallery_images : [],
+    active: row.active === true,
+    closedUntil: row.closed_until || "",
+    createdAt: row.created_at || ""
+  };
+}
+
+function roomRowFromObject(room = {}, homestayId) {
+  const galleryImages = normalizeGalleryImages(room);
+  const row = {};
+
+  if (homestayId) row.homestay_id = homestayId;
+  if (Object.prototype.hasOwnProperty.call(room, "name")) row.name = room.name;
+  if (Object.prototype.hasOwnProperty.call(room, "price")) row.price = Number(room.price || 0);
+  if (Object.prototype.hasOwnProperty.call(room, "detail")) row.detail = room.detail || "";
+  if (Object.prototype.hasOwnProperty.call(room, "active")) row.active = room.active === true;
+  if (Object.prototype.hasOwnProperty.call(room, "closedUntil")) row.closed_until = room.closedUntil || null;
+  if (Object.prototype.hasOwnProperty.call(room, "closed_until")) row.closed_until = room.closed_until || null;
+  if (room.image || galleryImages.length) row.image_url = room.image || galleryImages[0] || "";
+  if (room.galleryImageUploads || room.galleryImages) row.gallery_images = galleryImages;
+
+  return row;
+}
+
+function bookingObjectFromRow(row = {}) {
+  return {
+    id: row.id,
+    bookingCode: row.booking_code,
+    name: row.guest_name,
+    phone: row.guest_phone,
+    email: row.guest_email || "",
+    roomId: row.room_id,
+    roomName: row.room_name,
+    roomPrice: Number(row.room_price || 0),
+    checkIn: row.check_in,
+    checkOut: row.check_out,
+    nights: Number(row.nights || 0),
+    guestCount: Number(row.guest_count || 1),
+    mookataQty: Number(row.mookata_qty || 0),
+    mookataPrice: Number(row.mookata_price || 0),
+    extraBedQty: Number(row.extra_bed_qty || 0),
+    extraBedPrice: Number(row.extra_bed_price || 0),
+    roomTotal: Number(row.room_total || 0),
+    addonTotal: Number(row.addon_total || 0),
+    bookingFee: Number(row.booking_fee || 0),
+    grandTotal: Number(row.grand_total || 0),
+    paymentMethod: row.payment_method || "",
+    paymentStatus: row.payment_status || "",
+    bankName: row.bank_name || "",
+    bankAccountName: row.bank_account_name || "",
+    bankAccountNumber: row.bank_account_number || "",
+    slipFileName: row.slip_file_name || "",
+    slipMimeType: row.slip_mime_type || "",
+    slipUrl: row.slip_url || "",
+    note: row.note || "",
+    status: row.status || "",
+    createdAt: row.created_at || ""
+  };
+}
+
+function bookingRowFromObject(booking = {}, homestayId) {
+  return {
+    homestay_id: homestayId,
+    booking_code: booking.bookingCode,
+    guest_name: booking.name,
+    guest_phone: booking.phone,
+    guest_email: booking.email || "",
+    room_id: booking.roomId || null,
+    room_name: booking.roomName,
+    room_price: Number(booking.roomPrice || 0),
+    check_in: booking.checkIn,
+    check_out: booking.checkOut,
+    nights: Number(booking.nights || 0),
+    guest_count: Number(booking.guestCount || 1),
+    mookata_qty: Number(booking.mookataQty || 0),
+    mookata_price: Number(booking.mookataPrice || 0),
+    extra_bed_qty: Number(booking.extraBedQty || 0),
+    extra_bed_price: Number(booking.extraBedPrice || 0),
+    room_total: Number(booking.roomTotal || 0),
+    addon_total: Number(booking.addonTotal || 0),
+    booking_fee: Number(booking.bookingFee || 0),
+    grand_total: Number(booking.grandTotal || 0),
+    payment_method: booking.paymentMethod || "โอนผ่านบัญชีธนาคาร",
+    payment_status: booking.paymentStatus || "รอชำระเงิน",
+    bank_name: booking.bankName || "",
+    bank_account_name: booking.bankAccountName || "",
+    bank_account_number: booking.bankAccountNumber || "",
+    slip_file_name: booking.slipFileName || "",
+    slip_mime_type: booking.slipMimeType || "",
+    slip_url: booking.slipUrl || "",
+    note: booking.note || "",
+    status: booking.status || "รอชำระเงิน"
+  };
+}
+
+function syncPlanFromRow(row = {}) {
+  if (!row || typeof setPlan !== "function" || typeof setCredits !== "function") return;
+  setPlan(row.plan_type || "credit", row.plan_started_at || "");
+  setCredits(Number(row.credits || 0));
+}
+
+async function getSupabaseHomestay() {
+  const slug = encodeURIComponent(getCurrentHomestaySlug());
+  const rows = await supabaseRequest(`homestays?slug=eq.${slug}&select=*`);
+  const homestay = rows?.[0];
+  if (!homestay) throw new Error("ไม่พบโฮมสเตย์นี้ใน Supabase");
+  return homestay;
+}
+
 function getSiteName(settings = {}) {
-  return String(settings.siteName?.value || DEFAULT_SETTINGS.siteName?.value || "Wintery House").trim() || "Wintery House";
+  return String(settings.siteName?.value || DEFAULT_SETTINGS.siteName?.value || "Wiwahrin").trim() || "Wiwahrin";
 }
 
 function getLogoUrl(settings = {}) {
@@ -173,6 +364,151 @@ function uploadsToImageUrls(uploads = []) {
     .slice(0, 5);
 }
 
+function safeStorageName(value) {
+  const fallback = `file-${Date.now()}`;
+  return String(value || fallback)
+    .trim()
+    .replace(/[^\w.\-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 120) || fallback;
+}
+
+function base64ToBlob(base64, mimeType = "application/octet-stream") {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return new Blob([bytes], { type: mimeType });
+}
+
+async function supabaseUploadBase64(bucket, path, base64, mimeType) {
+  const url = `${supabaseBaseUrl()}/storage/v1/object/${bucket}/${path}`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      "Content-Type": mimeType || "application/octet-stream",
+      "x-upsert": "true"
+    },
+    body: base64ToBlob(base64, mimeType)
+  });
+
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!response.ok) {
+    throw new Error(data?.message || data?.error || response.statusText || "Supabase Storage upload failed");
+  }
+  return path;
+}
+
+function supabasePublicFileUrl(bucket, path) {
+  return `${supabaseBaseUrl()}/storage/v1/object/public/${bucket}/${path}`;
+}
+
+async function supabaseSignedFileUrl(bucket, path, expiresIn = 60 * 60 * 24 * 30) {
+  const url = `${supabaseBaseUrl()}/storage/v1/object/sign/${bucket}/${path}`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ expiresIn })
+  });
+
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!response.ok) return "";
+  return data?.signedURL ? `${supabaseBaseUrl()}${data.signedURL}` : "";
+}
+
+async function uploadPublicAsset(upload, path) {
+  if (!upload?.base64 || !upload?.mimeType) return "";
+  await supabaseUploadBase64("homestay-assets", path, upload.base64, upload.mimeType);
+  return supabasePublicFileUrl("homestay-assets", path);
+}
+
+async function uploadLogoToStorage(settings = {}, homestaySlug) {
+  const nextSettings = { ...settings };
+  const logo = nextSettings.logoUrl;
+
+  if (logo?.base64 && logo?.mimeType) {
+    const fileName = safeStorageName(logo.fileName || `logo-${Date.now()}`);
+    const path = `${safeStorageName(homestaySlug)}/brand/${Date.now()}-${fileName}`;
+    const logoUrl = await uploadPublicAsset(logo, path);
+
+    nextSettings.logoUrl = {
+      label: logo.label || "โลโก้",
+      value: logoUrl
+    };
+  }
+
+  const qrCode = nextSettings.qrCodeUrl;
+  if (qrCode?.base64 && qrCode?.mimeType) {
+    const fileName = safeStorageName(qrCode.fileName || `payment-qr-${Date.now()}`);
+    const path = `${safeStorageName(homestaySlug)}/payment/${Date.now()}-${fileName}`;
+    const qrCodeUrl = await uploadPublicAsset(qrCode, path);
+
+    nextSettings.qrCodeUrl = {
+      label: qrCode.label || "QR-code ชำระเงิน",
+      value: qrCodeUrl
+    };
+  }
+
+  return nextSettings;
+}
+
+async function uploadRoomImagesToStorage(room = {}, homestaySlug, roomId) {
+  const uploads = Array.isArray(room.galleryImageUploads) && room.galleryImageUploads.length
+    ? room.galleryImageUploads
+    : (room.imageUpload ? [room.imageUpload] : []);
+
+  const validUploads = uploads
+    .filter(upload => upload?.base64 && upload?.mimeType)
+    .slice(0, 5);
+
+  if (!validUploads.length) return null;
+
+  const folder = `${safeStorageName(homestaySlug)}/rooms/${safeStorageName(roomId || Date.now())}`;
+  const urls = [];
+
+  for (const [index, upload] of validUploads.entries()) {
+    const fileName = safeStorageName(upload.fileName || `room-${index + 1}`);
+    const path = `${folder}/${Date.now()}-${index + 1}-${fileName}`;
+    urls.push(await uploadPublicAsset(upload, path));
+  }
+
+  return urls;
+}
+
+async function uploadSlipToStorage(booking = {}, homestaySlug) {
+  if (!booking.slipBase64 || !booking.slipMimeType) return booking.slipUrl || "";
+
+  const bookingCode = safeStorageName(booking.bookingCode || booking.id || Date.now());
+  const fileName = safeStorageName(booking.slipFileName || `slip-${Date.now()}`);
+  const path = `${safeStorageName(homestaySlug)}/bookings/${bookingCode}/${Date.now()}-${fileName}`;
+  await supabaseUploadBase64("payment-slips", path, booking.slipBase64, booking.slipMimeType);
+
+  return path;
+}
+
+async function signBookingSlipUrls(bookings = []) {
+  const items = Array.isArray(bookings) ? bookings : [bookings];
+  const signedItems = await Promise.all(items.map(async booking => {
+    const slipUrl = String(booking?.slipUrl || "").trim();
+    if (!slipUrl || /^https?:\/\//.test(slipUrl) || slipUrl.startsWith("data:")) return booking;
+
+    const signedUrl = await supabaseSignedFileUrl("payment-slips", slipUrl);
+    return { ...booking, slipUrl: signedUrl || slipUrl };
+  }));
+
+  return Array.isArray(bookings) ? signedItems : signedItems[0];
+}
+
 function normalizeGalleryImages(room = {}) {
   const images = [];
   const addImage = value => {
@@ -206,6 +542,10 @@ function getPaymentQrImageUrl(settings = {}, amount = 0, size = 260) {
 }
 
 async function apiRequest(payload) {
+  if (isSupabaseReady) {
+    return supabaseApiRequest(payload);
+  }
+
   if (!isGoogleSheetReady) {
     return localApiRequest(payload);
   }
@@ -233,6 +573,178 @@ async function apiRequest(payload) {
 
   if (!response.ok) throw new Error("บันทึกข้อมูลไป Google Sheet ไม่สำเร็จ");
   return response.json();
+}
+
+async function supabaseApiRequest(payload) {
+  const action = payload.action || "list";
+  const homestay = await getSupabaseHomestay();
+  const homestayId = homestay.id;
+
+  if (action === "bootstrap") {
+    const [settingsRows, roomRows, bookingRows, planRows] = await Promise.all([
+      supabaseRequest(`homestay_settings?homestay_id=eq.${homestayId}&select=*`),
+      supabaseRequest(`rooms?homestay_id=eq.${homestayId}&select=*&order=sort_order.asc,created_at.asc`),
+      supabaseRequest(`bookings?homestay_id=eq.${homestayId}&select=*&order=created_at.desc`),
+      supabaseRequest(`homestay_plans?homestay_id=eq.${homestayId}&select=*`)
+    ]);
+    syncPlanFromRow(planRows?.[0]);
+
+    const bookings = await signBookingSlipUrls((bookingRows || []).map(bookingObjectFromRow));
+
+    return {
+      ok: true,
+      data: {
+        homestay,
+        plan: planRows?.[0] || null,
+        settings: settingObjectFromRow({ ...(settingsRows?.[0] || {}), page_url: homestay.page_url, gps_url: homestay.gps_url, logo_url: settingsRows?.[0]?.logo_url || homestay.logo_url }),
+        rooms: (roomRows || []).map(roomObjectFromRow),
+        bookings
+      },
+      mode: "supabase"
+    };
+  }
+
+  if (action === "settings") {
+    const rows = await supabaseRequest(`homestay_settings?homestay_id=eq.${homestayId}&select=*`);
+    return { ok: true, data: settingObjectFromRow(rows?.[0] || {}), mode: "supabase" };
+  }
+
+  if (action === "rooms") {
+    const rows = await supabaseRequest(`rooms?homestay_id=eq.${homestayId}&select=*&order=sort_order.asc,created_at.asc`);
+    return { ok: true, data: (rows || []).map(roomObjectFromRow), mode: "supabase" };
+  }
+
+  if (action === "list") {
+    const rows = await supabaseRequest(`bookings?homestay_id=eq.${homestayId}&select=*&order=created_at.desc`);
+    return { ok: true, data: await signBookingSlipUrls((rows || []).map(bookingObjectFromRow)), mode: "supabase" };
+  }
+
+  if (action === "lookupBooking") {
+    const code = encodeURIComponent(String(payload.bookingCode || "").trim());
+    const rows = await supabaseRequest(`bookings?homestay_id=eq.${homestayId}&booking_code=eq.${code}&select=*&limit=1`);
+    const booking = rows?.[0] ? await signBookingSlipUrls(bookingObjectFromRow(rows[0])) : null;
+    return { ok: true, data: booking, mode: "supabase" };
+  }
+
+  if (action === "updateSettings") {
+    const uploadedSettings = await uploadLogoToStorage(payload.settings || {}, homestay.slug);
+    const settingsRow = settingsRowFromObject(uploadedSettings, homestayId);
+    const rows = await supabaseRequest("homestay_settings?on_conflict=homestay_id", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+      body: JSON.stringify(settingsRow)
+    });
+
+    await supabaseRequest(`homestays?id=eq.${homestayId}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        name: settingsRow.site_name,
+        logo_url: settingsRow.logo_url,
+        page_url: uploadedSettings.pageUrl?.value || "",
+        gps_url: uploadedSettings.gpsUrl?.value || ""
+      })
+    });
+
+    return { ok: true, data: settingObjectFromRow(rows?.[0] || settingsRow), mode: "supabase" };
+  }
+
+  if (action === "createRoom") {
+    const roomId = crypto.randomUUID ? crypto.randomUUID() : "";
+    const uploadedImages = await uploadRoomImagesToStorage(payload.room || {}, homestay.slug, roomId || Date.now());
+    const roomPayload = uploadedImages
+      ? { ...(payload.room || {}), image: uploadedImages[0], galleryImages: uploadedImages }
+      : (payload.room || {});
+    const row = roomRowFromObject(roomPayload, homestayId);
+    if (roomId) row.id = roomId;
+    const rows = await supabaseRequest("rooms", {
+      method: "POST",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify(row)
+    });
+    return { ok: true, data: roomObjectFromRow(rows?.[0] || {}), mode: "supabase" };
+  }
+
+  if (action === "updateRoom") {
+    const uploadedImages = await uploadRoomImagesToStorage(payload.room || {}, homestay.slug, payload.id);
+    const roomPayload = uploadedImages
+      ? { ...(payload.room || {}), image: uploadedImages[0], galleryImages: uploadedImages }
+      : (payload.room || {});
+    const row = roomRowFromObject(roomPayload);
+    const rows = await supabaseRequest(`rooms?id=eq.${payload.id}&homestay_id=eq.${homestayId}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify(row)
+    });
+    return { ok: true, data: rows?.[0] ? roomObjectFromRow(rows[0]) : null, mode: "supabase" };
+  }
+
+  if (action === "deleteRoom") {
+    await supabaseRequest(`rooms?id=eq.${payload.id}&homestay_id=eq.${homestayId}`, {
+      method: "DELETE",
+      headers: { Prefer: "return=minimal" }
+    });
+    return { ok: true, mode: "supabase" };
+  }
+
+  if (action === "create") {
+    const slipUrl = await uploadSlipToStorage(payload.booking || {}, homestay.slug);
+    const row = bookingRowFromObject({ ...(payload.booking || {}), slipUrl }, homestayId);
+    const rows = await supabaseRequest("bookings", {
+      method: "POST",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify(row)
+    });
+
+    if (typeof CREDIT_PER_BOOKING !== "undefined") {
+      const planRows = await supabaseRequest(`homestay_plans?homestay_id=eq.${homestayId}&select=*`);
+      const plan = planRows?.[0];
+      if (!plan || !plan.plan_type || plan.plan_type === "credit") {
+        const nextCredits = Math.max(0, Number(plan?.credits || 0) - Number(CREDIT_PER_BOOKING || 0));
+        await supabaseRequest(`homestay_plans?homestay_id=eq.${homestayId}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({ credits: nextCredits, plan_type: "credit" })
+        }).then(updated => syncPlanFromRow(updated?.[0])).catch(() => {});
+        await supabaseRequest("credit_ledger", {
+          method: "POST",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({
+            homestay_id: homestayId,
+            booking_id: rows?.[0]?.id || null,
+            amount: -Number(CREDIT_PER_BOOKING || 0),
+            reason: "booking_created"
+          })
+        }).catch(() => {});
+      }
+    }
+
+    const booking = rows?.[0] ? await signBookingSlipUrls(bookingObjectFromRow(rows[0])) : null;
+    return { ok: true, data: booking, mode: "supabase" };
+  }
+
+  if (action === "updateStatus") {
+    const next = { status: payload.status };
+    if (payload.status === "ชำระแล้ว") next.payment_status = "ชำระแล้ว";
+    if (payload.status === "ยกเลิก") next.payment_status = "ยกเลิก";
+
+    await supabaseRequest(`bookings?id=eq.${payload.id}&homestay_id=eq.${homestayId}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify(next)
+    });
+    return { ok: true, mode: "supabase" };
+  }
+
+  if (action === "delete") {
+    await supabaseRequest(`bookings?id=eq.${payload.id}&homestay_id=eq.${homestayId}`, {
+      method: "DELETE",
+      headers: { Prefer: "return=minimal" }
+    });
+    return { ok: true, mode: "supabase" };
+  }
+
+  return { ok: false, message: "ไม่พบ action ใน Supabase" };
 }
 
 async function localApiRequest(payload) {
