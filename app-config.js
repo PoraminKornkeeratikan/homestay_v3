@@ -57,7 +57,7 @@ const DEFAULT_SETTINGS = {
 const BOOKING_FEE = 20;
 
 // ======= CREDIT SYSTEM =======
-const CREDIT_PER_BOOKING = 10;   // เครดิตที่ใช้ต่อการจอง 1 ครั้ง
+const CREDIT_PER_BOOKING = 20;   // เครดิตที่ใช้ต่อการจอง 1 ครั้ง
 const COMPANY_PASSWORD = "1234"; // รหัสผ่านหน้า company
 
 const TOPUP_PAYMENT_SETTINGS = {
@@ -68,12 +68,10 @@ const TOPUP_PAYMENT_SETTINGS = {
 };
 
 const CREDIT_PACKAGES = [
-  { credits: 500,  price: 1100,  label: "🥉 Starter",  unitCost: "฿22/จอง" },
-  { credits: 1000, price: 2000,  label: "🥈 Basic",    unitCost: "฿20/จอง" },
-  { credits: 2000, price: 3500,  label: "🥇 Pro",      unitCost: "฿17.50/จอง" },
-  { credits: 3500, price: 5500,  label: "💎 Business", unitCost: "฿15.70/จอง" },
-  { credits: 5000, price: 7000,  label: "👑 Ultimate", unitCost: "฿14/จอง" },
-  { credits: 0,    price: 19000, label: "📅 รายปี",    unitCost: "฿1,900/เดือน", type: "yearly" },
+  { credits: 1000, price: 1000,  label: "🥉 เริ่มต้น",  unitCost: "50 ห้อง" },
+  { credits: 2000, price: 2000,  label: "🥈 ธรรมดา",    unitCost: "100 ห้อง" },
+  { credits: 4000, price: 4000,  label: "🥇 โปร",      unitCost: "200 ห้อง" },
+  { credits: 0,    price: 20000, label: "📅 รายปี",    unitCost: "฿1,666/เดือน", type: "yearly" },
 ];
 
 // helpers เครดิต (ใช้ localStorage key: hs_credits, hs_plan, hs_plan_start, hs_plan_type)

@@ -166,6 +166,36 @@ function buildPaymentQrPayload(settings = {}, amount = 0) {
   return buildPromptPayPayload(promptPayId, amount) || buildTransferQrText(settings, amount);
 }
 
+function uploadsToImageUrls(uploads = []) {
+  return (Array.isArray(uploads) ? uploads : [])
+    .filter(upload => upload && upload.mimeType && upload.base64)
+    .map(upload => `data:${upload.mimeType};base64,${upload.base64}`)
+    .slice(0, 5);
+}
+
+function normalizeGalleryImages(room = {}) {
+  const images = [];
+  const addImage = value => {
+    const url = String(value || "").trim();
+    if (url && !images.includes(url)) images.push(url);
+  };
+
+  addImage(room.image);
+
+  if (Array.isArray(room.galleryImages)) {
+    room.galleryImages.forEach(addImage);
+  } else if (typeof room.galleryImages === "string") {
+    try {
+      const parsed = JSON.parse(room.galleryImages);
+      if (Array.isArray(parsed)) parsed.forEach(addImage);
+    } catch {
+      room.galleryImages.split("|").forEach(addImage);
+    }
+  }
+
+  return images.slice(0, 5);
+}
+
 function getPaymentQrImageUrl(settings = {}, amount = 0, size = 260) {
   const payload = buildPaymentQrPayload(settings, amount);
   const qrSize = Math.max(160, Math.min(Number(size || 260), 420));
@@ -258,10 +288,13 @@ async function localApiRequest(payload) {
 
   if (payload.action === "createRoom") {
     const payloadRoom = payload.room || {};
+    const galleryImages = uploadsToImageUrls(payloadRoom.galleryImageUploads);
     const room = {
       ...payloadRoom,
-      image: payloadRoom.image || (payloadRoom.imageUpload ? `data:${payloadRoom.imageUpload.mimeType};base64,${payloadRoom.imageUpload.base64}` : ""),
+      image: payloadRoom.image || galleryImages[0] || (payloadRoom.imageUpload ? `data:${payloadRoom.imageUpload.mimeType};base64,${payloadRoom.imageUpload.base64}` : ""),
+      galleryImages,
       imageUpload: undefined,
+      galleryImageUploads: undefined,
       id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
       active: true,
       createdAt: new Date().toISOString()
@@ -284,6 +317,12 @@ async function localApiRequest(payload) {
       nextRoom.image = payloadRoom.image;
     } else {
       delete nextRoom.image;
+    }
+
+    if (payloadRoom.galleryImageUploads) {
+      nextRoom.galleryImages = uploadsToImageUrls(payloadRoom.galleryImageUploads);
+      nextRoom.galleryImageUploads = undefined;
+      if (!nextRoom.image && nextRoom.galleryImages.length) nextRoom.image = nextRoom.galleryImages[0];
     }
 
     rooms = rooms.map(room => room.id === payload.id ? { ...room, ...nextRoom } : room);
@@ -350,10 +389,15 @@ function normalizeSettings(settings) {
 
 function normalizeRooms(rooms) {
   const data = Array.isArray(rooms) && rooms.length ? rooms : clone(DEFAULT_ROOMS);
-  return data.map(room => ({
-    ...room,
-    price: Number(room.price || 0),
-    closedUntil: String(room.closedUntil || "").trim(),
-    active: room.active === true || room.active === "TRUE" || room.active === "true" || room.active === 1
-  }));
+  return data.map(room => {
+    const galleryImages = normalizeGalleryImages(room);
+    return {
+      ...room,
+      image: String(room.image || galleryImages[0] || "").trim(),
+      galleryImages,
+      price: Number(room.price || 0),
+      closedUntil: String(room.closedUntil || "").trim(),
+      active: room.active === true || room.active === "TRUE" || room.active === "true" || room.active === 1
+    };
+  });
 }

@@ -180,6 +180,29 @@ function renderAdminImageBlock(imageUrl, altText) {
   `;
 }
 
+function getRoomGalleryImages(room = {}) {
+  const images = [];
+  const addImage = value => {
+    const url = String(value || "").trim();
+    if (url && !images.includes(url)) images.push(url);
+  };
+
+  addImage(room.image);
+
+  if (Array.isArray(room.galleryImages)) {
+    room.galleryImages.forEach(addImage);
+  } else if (typeof room.galleryImages === "string") {
+    try {
+      const parsed = JSON.parse(room.galleryImages);
+      if (Array.isArray(parsed)) parsed.forEach(addImage);
+    } catch {
+      room.galleryImages.split("|").forEach(addImage);
+    }
+  }
+
+  return images.slice(0, 5);
+}
+
 function statusClass(status) {
   if (status === "ยืนยันแล้ว" || status === "ชำระแล้ว") return "confirmed";
   if (status === "ยกเลิก") return "cancelled";
@@ -315,8 +338,8 @@ function fileToBase64(file) {
 }
 
 function updateRoomImageChoiceState() {
-  const file = roomImageFileInput.files && roomImageFileInput.files[0];
-  roomImageFileName.textContent = file ? file.name : "ยังไม่ได้เลือกไฟล์";
+  const files = Array.from(roomImageFileInput.files || []).slice(0, 5);
+  roomImageFileName.textContent = files.length ? `${files.length} รูปที่เลือก` : "ยังไม่ได้เลือกไฟล์";
   updateImagePreview(roomImageFileInput, roomImagePreview);
 }
 
@@ -353,34 +376,36 @@ async function createRoom(event) {
   event.preventDefault();
 
   const imageUrl = roomImageInput.value.trim();
-  const imageFile = roomImageFileInput.files && roomImageFileInput.files[0];
+  const imageFiles = Array.from(roomImageFileInput.files || []).slice(0, 5);
 
-  if (!imageFile) {
+  if (!imageFiles.length) {
     showToast("กรุณาอัปโหลดรูปห้องพัก");
     return;
   }
 
-  let uploadedImage = null;
+  let uploadedImages = [];
 
-  if (imageFile) {
+  if (imageFiles.length) {
     const maxSize = 5 * 1024 * 1024;
-    if (imageFile.size > maxSize) {
-      showToast("รูปภาพต้องมีขนาดไม่เกิน 5MB");
-      return;
-    }
-
     const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
 
-    if (!allowedTypes.includes(imageFile.type)) {
-      showToast("กรุณาใช้รูป JPG, PNG หรือ WEBP เท่านั้น ไม่แนะนำ HEIC จากมือถือ");
-      return;
-    }
+    for (const file of imageFiles) {
+      if (file.size > maxSize) {
+        showToast("รูปภาพต้องมีขนาดไม่เกิน 5MB");
+        return;
+      }
 
-    uploadedImage = {
-      fileName: imageFile.name,
-      mimeType: imageFile.type,
-      base64: await fileToBase64(imageFile)
-    };
+      if (!allowedTypes.includes(file.type)) {
+        showToast("กรุณาใช้รูป JPG, PNG หรือ WEBP เท่านั้น");
+        return;
+      }
+
+      uploadedImages.push({
+        fileName: file.name,
+        mimeType: file.type,
+        base64: await fileToBase64(file)
+      });
+    }
   }
 
   const room = {
@@ -388,7 +413,8 @@ async function createRoom(event) {
     price: Number(roomPriceInput.value || 0),
     detail: roomDetailInput.value.trim(),
     image: imageUrl,
-    imageUpload: uploadedImage,
+    imageUpload: uploadedImages[0] || null,
+    galleryImageUploads: uploadedImages,
     active: true
   };
 
@@ -431,7 +457,7 @@ function renderRoomTable() {
       <td class="room-image-admin-cell">
         ${renderAdminImageBlock(room.image || "", room.name)}
         <label class="inline-file-box" for="room-image-file-${room.id}">
-          <input type="file" id="room-image-file-${room.id}" accept="image/jpeg,image/png,image/webp" onchange="updateRoomTableFileName('${room.id}')" />
+          <input type="file" id="room-image-file-${room.id}" accept="image/jpeg,image/png,image/webp" multiple onchange="updateRoomTableFileName('${room.id}')" />
           <span>อัปโหลดรูปใหม่</span>
           <small id="room-image-file-name-${room.id}">ยังไม่ได้เลือกไฟล์</small>
           <img class="upload-preview table-upload-preview hidden" id="room-image-preview-${room.id}" alt="ตัวอย่างรูปใหม่" />
@@ -455,8 +481,8 @@ function updateRoomTableFileName(id) {
   const input = document.getElementById(`room-image-file-${id}`);
   const label = document.getElementById(`room-image-file-name-${id}`);
   const preview = document.getElementById(`room-image-preview-${id}`);
-  const file = input?.files && input.files[0];
-  if (label) label.textContent = file ? file.name : "ยังไม่ได้เลือกไฟล์";
+  const files = Array.from(input?.files || []).slice(0, 5);
+  if (label) label.textContent = files.length ? `${files.length} รูปที่เลือก` : "ยังไม่ได้เลือกไฟล์";
   updateImagePreview(input, preview);
 }
 
@@ -501,11 +527,12 @@ function renderRoomTable() {
             <div class="room-admin-field upload-field">
               <span>รูปภาพ</span>
               <label class="inline-file-box" for="room-image-file-${room.id}">
-                <input type="file" id="room-image-file-${room.id}" accept="image/jpeg,image/png,image/webp" onchange="updateRoomTableFileName('${room.id}')" />
+                <input type="file" id="room-image-file-${room.id}" accept="image/jpeg,image/png,image/webp" multiple onchange="updateRoomTableFileName('${room.id}')" />
                 <span>อัปโหลดรูปใหม่</span>
                 <small id="room-image-file-name-${room.id}">ยังไม่ได้เลือกไฟล์</small>
                 <img class="upload-preview table-upload-preview hidden" id="room-image-preview-${room.id}" alt="ตัวอย่างรูปใหม่" />
               </label>
+              <div class="room-gallery-count">${getRoomGalleryImages(room).length} / 5 photos</div>
             </div>
           </div>
 
@@ -526,32 +553,38 @@ function renderRoomTable() {
 
 async function saveRoom(id) {
   const imageInput = document.getElementById(`room-image-file-${id}`);
-  const imageFile = imageInput?.files && imageInput.files[0];
+  const imageFiles = Array.from(imageInput?.files || []).slice(0, 5);
   const room = {
     name: document.getElementById(`room-name-${id}`).value.trim(),
     price: Number(document.getElementById(`room-price-${id}`).value || 0),
     detail: document.getElementById(`room-detail-${id}`).value.trim()
   };
 
-  if (imageFile) {
+  if (imageFiles.length) {
     const maxSize = 5 * 1024 * 1024;
     const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    const uploadedImages = [];
 
-    if (imageFile.size > maxSize) {
-      showToast("รูปภาพต้องมีขนาดไม่เกิน 5MB");
-      return;
+    for (const file of imageFiles) {
+      if (file.size > maxSize) {
+        showToast("รูปภาพต้องมีขนาดไม่เกิน 5MB");
+        return;
+      }
+
+      if (!allowedTypes.includes(file.type)) {
+        showToast("กรุณาใช้รูป JPG, PNG หรือ WEBP เท่านั้น");
+        return;
+      }
+
+      uploadedImages.push({
+        fileName: file.name,
+        mimeType: file.type,
+        base64: await fileToBase64(file)
+      });
     }
 
-    if (!allowedTypes.includes(imageFile.type)) {
-      showToast("กรุณาใช้รูป JPG, PNG หรือ WEBP เท่านั้น");
-      return;
-    }
-
-    room.imageUpload = {
-      fileName: imageFile.name,
-      mimeType: imageFile.type,
-      base64: await fileToBase64(imageFile)
-    };
+    room.imageUpload = uploadedImages[0];
+    room.galleryImageUploads = uploadedImages;
   }
 
   try {
@@ -1175,11 +1208,30 @@ let selectedTopupPkg = null;
 let topupSlipBase64 = "";
 let topupSlipMime = "";
 let topupSlipFilename = "";
+let topupModalScrollY = 0;
+
+function lockTopupPageScroll() {
+  topupModalScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+  document.documentElement.classList.add("topup-modal-open");
+  document.body.classList.add("topup-modal-open");
+  document.body.style.top = `-${topupModalScrollY}px`;
+}
+
+function unlockTopupPageScroll() {
+  document.documentElement.classList.remove("topup-modal-open");
+  document.body.classList.remove("topup-modal-open");
+  document.body.style.top = "";
+  window.scrollTo(0, topupModalScrollY || 0);
+}
 
 function openTopupModal() {
   const reqs = getTopupRequests();
   const pending = reqs.find(r => r.status === "pending");
-  document.getElementById("topupModal").classList.remove("hidden");
+  const modal = document.getElementById("topupModal");
+  lockTopupPageScroll();
+  modal.classList.remove("hidden");
+  const card = modal.querySelector(".topup-card");
+  if (card) card.scrollTop = 0;
 
   if (pending) {
     document.getElementById("topupStep1").classList.add("hidden");
@@ -1232,6 +1284,7 @@ function openTopupModal() {
 
 function closeTopupModal() {
   document.getElementById("topupModal").classList.add("hidden");
+  unlockTopupPageScroll();
 }
 
 function selectTopupPkg(credits, price, label) {
@@ -1359,10 +1412,15 @@ setInterval(() => {
   }
 }, 5000);
 
+function updateHeaderVisibility() {
+  document.body.classList.toggle('login-hidden', !adminDashboard || adminDashboard.classList.contains('hidden'));
+}
+
 loginBtn.addEventListener("click", async () => {
   if (adminPassword.value === ADMIN_PASSWORD) {
     adminLoginBox.classList.add("hidden");
     adminDashboard.classList.remove("hidden");
+    updateHeaderVisibility();
     await loadDashboard();
     renderCreditCard(); renderHeaderCredit();
     showToast("เข้าสู่ระบบสำเร็จ");
@@ -1375,6 +1433,7 @@ logoutBtn.addEventListener("click", () => {
   adminPassword.value = "";
   adminDashboard.classList.add("hidden");
   adminLoginBox.classList.remove("hidden");
+  updateHeaderVisibility();
 });
 
 refreshBtn.addEventListener("click", loadDashboard);
@@ -1383,6 +1442,8 @@ roomForm.addEventListener("submit", createRoom);
 searchBooking.addEventListener("input", renderBookingTable);
 statusFilter.addEventListener("change", renderBookingTable);
 exportCsvBtn.addEventListener("click", exportCsv);
+
+updateHeaderVisibility();
 
 document.addEventListener("DOMContentLoaded", function(){
   applyBrandAssets(normalizeSettings(typeof localGetSettings === "function" ? localGetSettings() : DEFAULT_SETTINGS));

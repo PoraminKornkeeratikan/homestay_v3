@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title> owner </title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="LOGO.jpg?v=2" type="image/jpeg" />
+  <link rel="shortcut icon" href="LOGO.jpg?v=2" type="image/jpeg" />
+  <link rel="apple-touch-icon" href="LOGO.jpg?v=2" />
+  <style>
+    /* ===== ADMIN HEADER ACTIONS ===== */
+    .admin-header-actions {
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+      padding: .45rem;
+      background: rgba(244, 251, 247, .92);
+      border: 1px solid rgba(220, 235, 227, .95);
+      border-radius: 1.25rem;
+      box-shadow: 0 14px 34px rgba(15, 61, 46, .08);
+    }
+
+    body.login-hidden header.topbar { display: none; }
+
+    /* ===== HAMBURGER MENU ===== */
+    .hamburger-btn {
+      width: 44px; height: 44px;
+      background: #fff; border: 1px solid #dcebe3; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+      padding: 0; border-radius: .9rem;
+      transition: background .15s, border-color .15s, box-shadow .15s, transform .15s;
+    }
+    .hamburger-btn:hover {
+      background: #f0fdf4;
+      border-color: #86efac;
+      box-shadow: 0 10px 22px rgba(20, 83, 63, .12);
+      transform: translateY(-1px);
+    }
+    .hamburger-btn span {
+      display: block; width: 20px; height: 2px;
+      background: #14533f; border-radius: 2px;
+      transition: all .25s;
+    }
+    .hamburger-btn.open {
+      background: #14533f;
+      border-color: #14533f;
+      box-shadow: 0 12px 28px rgba(20, 83, 63, .2);
+    }
+    .hamburger-btn.open span { background: #fff; }
+    .hamburger-btn.open span:nth-child(1) { transform: rotate(45deg) translate(5px,5px); }
+    .hamburger-btn.open span:nth-child(2) { opacity: 0; }
+    .hamburger-btn.open span:nth-child(3) { transform: rotate(-45deg) translate(5px,-5px); }
+
+    .hamburger-dropdown {
+      position: fixed; inset: 0;
+      display: grid; place-items: start end;
+      padding: 5.5rem 1rem 1rem;
+      background: rgba(15, 61, 46, .18);
+      backdrop-filter: blur(6px);
+      z-index: 300;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s;
+    }
+    .hamburger-dropdown.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .hamburger-popup-card {
+      width: min(320px, calc(100vw - 2rem));
+      max-height: calc(100vh - 7rem);
+      overflow: auto;
+      background: rgba(255,255,255,.98);
+      border: 1px solid #dcebe3;
+      border-radius: 1.2rem;
+      box-shadow: 0 24px 60px rgba(15, 61, 46, .2);
+      overflow: hidden;
+    }
+    .hamburger-popup-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .85rem 1rem;
+      border-bottom: 1px solid #edf5f0;
+      background: #f8fcfa;
+    }
+    .hamburger-popup-head strong {
+      color: #14533f;
+      font-size: .92rem;
+    }
+    .hamburger-close-btn {
+      width: 32px; height: 32px;
+      border: 0;
+      border-radius: .75rem;
+      background: #fff;
+      color: #203d35;
+      cursor: pointer;
+      box-shadow: inset 0 0 0 1px #dcebe3;
+    }
+    .hamburger-menu-item {
+      display: flex; align-items: center; gap: .75rem;
+      padding: .95rem 1.05rem; color: #203d35;
+      text-decoration: none; font-size: .92rem; font-weight: 700;
+      cursor: pointer; border: none; background: none; width: 100%;
+      transition: background .12s, color .12s;
+    }
+    .hamburger-menu-item:hover { background: #f0fdf4; color: #14533f; }
+    .hamburger-menu-item .menu-icon {
+      width: 32px; height: 32px;
+      display: inline-grid; place-items: center;
+      background: #e8f6ef;
+      border-radius: .75rem;
+      font-size: 1rem;
+    }
+    .hamburger-divider { border: none; border-top: 1px solid #edf5f0; margin: .25rem 0; }
+
+    /* ===== HEADER CREDIT ===== */
+    .header-credit-wrap {
+      min-height: 44px;
+      display: flex; align-items: center; gap: .7rem;
+      background: #fff; border: 1px solid #bbf7d0;
+      border-radius: 1rem; padding: .42rem .9rem .42rem .55rem;
+      cursor: pointer; transition: background .15s, border-color .15s, box-shadow .15s, transform .15s;
+      box-shadow: 0 8px 18px rgba(20, 83, 63, .08);
+    }
+    .header-credit-wrap:hover {
+      background: #f0fdf4;
+      border-color: #86efac;
+      box-shadow: 0 12px 26px rgba(20, 83, 63, .13);
+      transform: translateY(-1px);
+    }
+    .header-credit-wrap.is-inactive {
+      border-color: #fecaca;
+      background: #fff7f7;
+    }
+    .header-credit-icon {
+      width: 32px; height: 32px;
+      display: grid; place-items: center;
+      border-radius: .75rem;
+      background: #dcfce7;
+      color: #14533f;
+      font-size: 1rem;
+    }
+    .header-credit-wrap.is-inactive .header-credit-icon {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+    .header-credit-val {
+      color: #0f3d2e;
+      font-weight: 900;
+      font-size: 1.08rem;
+      letter-spacing: 0;
+    }
+    .header-credit-wrap.is-inactive .header-credit-val { color: #dc2626; }
+    .header-credit-label { color: #6b7d73; font-size: .72rem; font-weight: 700; }
+    .header-credit-col { display: flex; flex-direction: column; line-height: 1.05; }
+    .header-topup-btn {
+      min-height: 44px;
+      background: linear-gradient(135deg, #14533f, #1d6b50); border: none;
+      color: #fff; border-radius: 1rem; padding: .55rem 1rem;
+      font-size: .88rem; font-weight: 800; cursor: pointer;
+      box-shadow: 0 12px 24px rgba(20, 83, 63, .18);
+      transition: transform .15s, box-shadow .15s, filter .15s; white-space: nowrap;
+    }
+    .header-topup-btn:hover { filter: brightness(1.04); box-shadow: 0 16px 30px rgba(20, 83, 63, .24); transform: translateY(-1px); }
+    .header-topup-btn.is-pending {
+      background: linear-gradient(135deg, #b7791f, #f59e0b) !important;
+      box-shadow: 0 12px 24px rgba(180, 83, 9, .2);
+    }
+
+    @media (max-width: 760px) {
+      .admin-header-actions {
+        width: 100%;
+        justify-content: space-between;
+        border-radius: 1rem;
+      }
+      .header-credit-wrap { flex: 1; min-width: 0; }
+      .header-topup-btn { padding-inline: .8rem; }
+    }
+
+    @media (max-width: 480px) {
+      .admin-header-actions {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: .35rem;
+        padding: .35rem;
+        border-radius: .85rem;
+      }
+      .hamburger-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: .8rem;
+      }
+      .hamburger-btn span {
+        width: 18px;
+      }
+      .header-credit-wrap {
+        min-height: 38px;
+        gap: .45rem;
+        padding: .3rem .55rem .3rem .35rem;
+        border-radius: .8rem;
+      }
+      .header-credit-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: .65rem;
+        font-size: .85rem;
+      }
+      .header-credit-val {
+        font-size: .9rem;
+      }
+      .header-credit-label {
+        font-size: .62rem;
+      }
+      .header-topup-btn {
+        grid-column: 1 / -1;
+        width: 100%;
+        min-height: 38px;
+        padding: .45rem .7rem;
+        border-radius: .8rem;
+        font-size: .75rem;
+      }
+      .hamburger-dropdown {
+        padding: 4.5rem .75rem .75rem;
+      }
+      .hamburger-popup-card {
+        width: min(300px, calc(100vw - 1.5rem));
+        max-height: calc(100vh - 5.75rem);
+        border-radius: .9rem;
+      }
+      .hamburger-popup-head {
+        padding: .7rem .8rem;
+      }
+      .hamburger-popup-head strong {
+        font-size: .85rem;
+      }
+      .hamburger-close-btn {
+        width: 30px;
+        height: 30px;
+      }
+      .hamburger-menu-item {
+        gap: .6rem;
+        padding: .78rem .85rem;
+        font-size: .84rem;
+      }
+      .hamburger-menu-item .menu-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: .65rem;
+        font-size: .9rem;
+      }
+    }
+
+    /* Polished owner header on tablet/mobile */
+    @media (max-width: 760px) {
+      header.topbar {
+        align-items: stretch;
+      }
+
+      .admin-header-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) max-content 44px;
+        grid-template-areas: "credit topup menu";
+        align-items: center;
+        gap: .5rem;
+        padding: .55rem;
+        border-radius: 1.15rem;
+        background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(239,251,245,.94));
+        box-shadow: 0 14px 32px rgba(15, 61, 46, .1);
+      }
+
+      .header-credit-wrap {
+        grid-area: credit;
+        min-width: 0;
+        min-height: 44px;
+        border-radius: .9rem;
+      }
+
+      .header-topup-btn {
+        grid-area: topup;
+        min-height: 44px;
+        padding-inline: .9rem;
+        border-radius: .9rem;
+      }
+
+      .hamburger-menu-wrap {
+        grid-area: menu;
+        width: 44px;
+        height: 44px;
+      }
+
+      .hamburger-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: .9rem;
+      }
+    }
+
+    @media (min-width: 621px) and (max-width: 900px) {
+      header.topbar {
+        display: grid;
+        grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+        align-items: center;
+        gap: 1rem;
+      }
+
+      header.topbar .brand {
+        min-width: 0;
+      }
+
+      .admin-header-actions {
+        justify-self: end;
+        width: min(100%, 668px);
+        grid-template-columns: minmax(130px, auto) max-content 44px;
+      }
+    }
+
+    @media (min-width: 700px) and (max-width: 1024px) {
+      header.topbar {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        align-items: center;
+      }
+
+      .admin-header-actions {
+        justify-self: end;
+        width: auto;
+        display: flex;
+        grid-template-columns: none;
+        padding: .45rem;
+      }
+
+      .header-credit-wrap,
+      .header-topup-btn,
+      .hamburger-menu-wrap {
+        flex: 0 0 auto;
+      }
+    }
+
+    @media (max-width: 520px) {
+      header.topbar {
+        gap: .65rem;
+        padding: .75rem;
+      }
+
+      header.topbar .brand {
+        padding: .15rem .1rem;
+      }
+
+      .admin-header-actions {
+        grid-template-columns: minmax(0, 1fr) 42px;
+        grid-template-areas:
+          "credit menu"
+          "topup topup";
+        gap: .45rem;
+        padding: .5rem;
+        border-radius: 1rem;
+      }
+
+      .header-credit-wrap {
+        min-height: 42px;
+        gap: .55rem;
+        padding: .35rem .65rem .35rem .4rem;
+        border-radius: .85rem;
+      }
+
+      .header-credit-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: .7rem;
+      }
+
+      .header-credit-val {
+        font-size: .95rem;
+      }
+
+      .header-credit-label {
+        font-size: .66rem;
+      }
+
+      .header-topup-btn {
+        width: 100%;
+        min-height: 42px;
+        padding: .65rem .85rem;
+        border-radius: .85rem;
+        font-size: .86rem;
+        box-shadow: 0 10px 22px rgba(20, 83, 63, .18);
+      }
+
+      .hamburger-menu-wrap,
+      .hamburger-btn {
+        width: 42px;
+        height: 42px;
+      }
+
+      .hamburger-btn {
+        border-radius: .85rem;
+      }
+    }
+
+    @media (max-width: 620px) {
+      header.topbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "brand actions";
+        align-items: center;
+        column-gap: .65rem;
+      }
+
+      header.topbar .brand {
+        grid-area: brand;
+        min-width: 0;
+      }
+
+      header.topbar .brand > div {
+        min-width: 0;
+      }
+
+      header.topbar .brand h1,
+      header.topbar .brand p {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .admin-header-actions {
+        grid-area: actions;
+        width: auto;
+        display: flex;
+        align-items: center;
+        gap: .32rem;
+        padding: .28rem;
+        border-radius: 1rem;
+        background: rgba(255,255,255,.86);
+        border: 1px solid rgba(220,235,227,.9);
+        box-shadow: 0 10px 24px rgba(15, 61, 46, .1);
+        overflow: visible;
+      }
+
+      .header-credit-wrap {
+        width: auto;
+        min-height: 38px;
+        flex: 0 0 auto;
+        gap: .34rem;
+        padding: .25rem .48rem .25rem .28rem;
+        border-radius: .82rem;
+      }
+
+      .header-credit-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: .65rem;
+      }
+
+      .header-credit-val {
+        font-size: .88rem;
+        max-width: 38px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .header-credit-label {
+        display: none;
+      }
+
+      .header-topup-btn {
+        width: 38px;
+        min-width: 38px;
+        height: 38px;
+        min-height: 38px;
+        padding: 0;
+        border-radius: .82rem;
+        font-size: 0;
+        position: relative;
+        display: block;
+        color: transparent;
+        box-shadow: 0 8px 18px rgba(20, 83, 63, .16);
+      }
+
+      .header-topup-btn::before {
+        content: "+";
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 1.25rem;
+        line-height: 1;
+        font-weight: 900;
+        transform: none;
+      }
+
+      .hamburger-menu-wrap,
+      .hamburger-btn {
+        width: 38px;
+        height: 38px;
+      }
+
+      .hamburger-btn {
+        border-radius: .82rem;
+      }
+
+      .hamburger-btn span {
+        width: 17px;
+      }
+
+      .hamburger-dropdown {
+        padding-top: 4.6rem;
+      }
+    }
+
+    /* ===== SECTION PANELS (ตั้งค่า / ห้องพัก hidden by default) ===== */
+    .settings-panel, .rooms-panel { display: none; }
+    .settings-panel.visible, .rooms-panel.visible { display: block; }
+
+    /* ===== DAILY PREP CARD ===== */
+    .prep-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+      align-items: stretch;
+      margin-bottom: 1.5rem;
+    }
+    .prep-section {
+      min-height: 100%;
+      background: rgba(255,255,255,.92); border-radius: 1.25rem;
+      border: 1px solid rgba(220,235,227,.95);
+      box-shadow: 0 16px 38px rgba(15, 61, 46, .08);
+      overflow: hidden;
+    }
+    .prep-header {
+      display: flex; align-items: center; gap: .75rem;
+      padding: 1rem 1.1rem;
+      background: linear-gradient(135deg, #fff7ed, #fef3c7);
+      border-bottom: 1px solid #fde68a;
+    }
+    .prep-header.today-header {
+      background: linear-gradient(135deg, #eff6ff, #dcfce7);
+      border-bottom-color: #bbf7d0;
+    }
+    .prep-header-icon {
+      width: 42px; height: 42px;
+      display: grid; place-items: center;
+      flex: 0 0 auto;
+      border-radius: .95rem;
+      background: rgba(255,255,255,.82);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.85), 0 10px 20px rgba(146, 64, 14, .08);
+      font-size: 1.25rem;
+    }
+    .prep-header-text { min-width: 0; }
+    .prep-header-text h4 { margin:0; font-size:1rem; color:#92400e; line-height: 1.25; }
+    .prep-header-text p  { margin:.15rem 0 0; font-size:.78rem; color:#b45309; font-weight: 700; }
+    .prep-header.today-header .prep-header-text h4 { color:#14533f; }
+    .prep-header.today-header .prep-header-text p  { color:#1d6b50; }
+    .prep-body {
+      padding: .55rem 1.1rem 1rem;
+      max-height: 340px;
+      overflow: auto;
+    }
+    .prep-body::-webkit-scrollbar { width: 8px; }
+    .prep-body::-webkit-scrollbar-thumb { background: rgba(35, 91, 72, .22); border-radius: 99px; }
+    .prep-empty {
+      color:#6b7d73; font-size:.9rem; padding:1rem;
+      background: #f8fcfa;
+      border: 1px dashed #dcebe3;
+      border-radius: .9rem;
+      text-align: center;
+      margin-top: .55rem;
+    }
+    .prep-item {
+      display: flex; gap: .7rem;
+      align-items: flex-start; padding: .8rem 0;
+      border-bottom: 1px solid #edf5f0;
+    }
+    .prep-item:last-child { border-bottom: none; }
+    .prep-booking-code {
+      flex: 0 0 auto;
+      background: #f4fbf7; border: 1px solid #dcebe3;
+      border-radius: .55rem;
+      padding: .2rem .5rem; font-size: .72rem;
+      color: #14533f; font-family: monospace; font-weight: 800;
+    }
+    .prep-name { font-weight: 600; color: #111827; font-size: .92rem; }
+    .prep-room { color: #6b7280; font-size: .82rem; }
+    .prep-item > div { min-width: 0; }
+    .prep-name, .prep-room { overflow-wrap: anywhere; }
+    .prep-addons { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .25rem; width: 100%; }
+    .prep-addon-tag {
+      background: #fef3c7; color: #92400e;
+      border-radius: .4rem; padding: .2rem .6rem;
+      font-size: .78rem; font-weight: 600;
+    }
+    .prep-addon-tag.bed {
+      background: #ede9fe; color: #5b21b6;
+    }
+
+    @media (max-width: 780px) {
+      .prep-grid {
+        grid-template-columns: 1fr;
+      }
+      .prep-body {
+        max-height: none;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .prep-grid {
+        gap: .75rem;
+        margin-bottom: 1rem;
+      }
+      .prep-section {
+        border-radius: .9rem;
+      }
+      .prep-header {
+        gap: .65rem;
+        padding: .75rem .85rem;
+      }
+      .prep-header-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: .75rem;
+        font-size: 1rem;
+      }
+      .prep-header-text h4 {
+        font-size: .88rem;
+      }
+      .prep-header-text p {
+        font-size: .68rem;
+      }
+      .prep-body {
+        padding: .45rem .85rem .8rem;
+      }
+      .prep-item {
+        gap: .5rem;
+        padding: .65rem 0;
+      }
+      .prep-item-icon {
+        width: 24px;
+        height: 24px;
+        font-size: .75rem;
+      }
+      .prep-item-title {
+        font-size: .82rem;
+      }
+      .prep-item-meta {
+        font-size: .68rem;
+      }
+    }
+
+    /* ===== TOPUP SUBMIT BUTTON ===== */
+    #topupSendBtn {
+      position: relative;
+      width: 100%;
+      min-height: 58px;
+      margin-top: 1.15rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .6rem;
+      padding: .9rem 1.2rem;
+      border: 0;
+      border-radius: 1rem;
+      background: linear-gradient(135deg, #14533f, #1d6b50);
+      color: #fff;
+      box-shadow: 0 16px 34px rgba(20, 83, 63, .24);
+      font-size: .95rem;
+      font-weight: 900;
+      line-height: 1.35;
+      white-space: normal;
+      text-align: center;
+      cursor: pointer;
+      transition: transform .16s ease, box-shadow .16s ease, filter .16s ease, opacity .16s ease;
+    }
+
+    #topupSendBtn::after {
+      content: "";
+      width: 9px;
+      height: 9px;
+      border-top: 2px solid currentColor;
+      border-right: 2px solid currentColor;
+      transform: rotate(45deg);
+      opacity: .9;
+      flex: 0 0 auto;
+    }
+
+    #topupSendBtn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      filter: brightness(1.04);
+      box-shadow: 0 20px 42px rgba(20, 83, 63, .3);
+    }
+
+    #topupSendBtn:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 0 12px 24px rgba(20, 83, 63, .22);
+    }
+
+    #topupSendBtn:disabled {
+      background: #f3f4f6;
+      color: #8a9a92;
+      border: 1px dashed #cfded6;
+      box-shadow: none;
+      cursor: not-allowed;
+      opacity: 1;
+    }
+
+    #topupSendBtn:disabled::after {
+      opacity: .35;
+    }
+
+    @media (max-width: 480px) {
+      #topupSendBtn {
+        min-height: 48px;
+        margin-top: .85rem;
+        padding: .72rem .95rem;
+        border-radius: .85rem;
+        font-size: .82rem;
+        line-height: 1.35;
+      }
+      #topupSendBtn::after {
+        width: 7px;
+        height: 7px;
+      }
+    }
+  </style>
+</head>
+<body data-page-title-suffix="Owner">
+  <header class="topbar">
+    <a class="brand" href="customer.html">
+      <img class="site-logo" src="LOGO.jpg" alt="โลโก้โฮมสเตย์" />
+      <div>
+        <h1>Wintery House</h1>
+        <p>Owner • จัดการโฮมสเตย์</p>
+      </div>
+    </a>
+    <nav class="admin-header-actions">
+      <!-- Credit display in header -->
+      <div class="header-credit-wrap" id="headerCreditWrap" onclick="openTopupModal()" title="เติมเครดิต">
+        <span class="header-credit-icon">💳</span>
+        <div class="header-credit-col">
+          <span class="header-credit-val" id="headerCreditVal">-</span>
+          <span class="header-credit-label">เครดิต</span>
+        </div>
+      </div>
+      <button class="header-topup-btn" id="headerTopupBtn" onclick="openTopupModal()">➕ เติมเครดิต</button>
+
+      <!-- Hamburger Menu -->
+      <div class="hamburger-menu-wrap">
+        <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleHamburger()" aria-label="เมนู">
+          <span></span><span></span><span></span>
+        </button>
+        <div class="hamburger-dropdown" id="hamburgerDropdown">
+          <div class="hamburger-popup-card" role="dialog" aria-modal="true" aria-label="เมนูจัดการ">
+            <div class="hamburger-popup-head">
+              <strong>เมนูจัดการ</strong>
+              <button type="button" class="hamburger-close-btn" onclick="closeHamburgerPopup()" aria-label="ปิด">✕</button>
+            </div>
+            <button class="hamburger-menu-item" onclick="showPanel('settings')">
+              <span class="menu-icon">⚙️</span> ตั้งค่าราคาและบัญชีโอน
+            </button>
+            <hr class="hamburger-divider">
+            <button class="hamburger-menu-item" onclick="showPanel('rooms')">
+              <span class="menu-icon">🏠</span> เพิ่มห้องพัก
+            </button>
+            <button class="hamburger-menu-item" onclick="showPanel('roomlist')">
+              <span class="menu-icon">📋</span> รายการห้องพัก
+            </button>
+          </div>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="admin-login" id="adminLoginBox">
+      <div class="login-card">
+        <img class="logo large" src="LOGO.jpg" alt="โลโก้โฮมสเตย์" />
+        <h2>เข้าสู่ระบบ owner</h2>
+        <input type="password" id="adminPassword" placeholder="กรอกรหัสผ่าน" />
+        <button id="loginBtn">เข้าสู่ระบบ</button>
+      </div>
+    </section>
+
+    <section class="admin-dashboard hidden" id="adminDashboard">
+      <div class="section-head dashboard-head">
+        <div>
+          <h3>แดชบอร์ดแอดมิน</h3>
+          <p>จัดการห้องพัก ราคาเสริม บัญชีรับเงิน และรายการจอง</p>
+        </div>
+        <div class="admin-actions">
+          <button class="ghost-btn" id="refreshBtn">รีเฟรชข้อมูล</button>
+          <button class="ghost-btn" id="logoutBtn">ออกจากระบบ</button>
+        </div>
+      </div>
+
+      <!-- Credit Bar (เดิม ซ่อนไว้แล้วย้ายไป header) -->
+      <div class="credit-bar hidden" id="creditStatusCard">
+        <div class="credit-bar-left">
+          <span class="credit-bar-icon">💳</span>
+          <div class="credit-bar-info">
+            <span class="credit-bar-label">เครดิตคงเหลือ</span>
+            <strong class="credit-bar-number" id="creditDisplay">0</strong>
+          </div>
+          <div class="credit-plan-badge" id="creditPlanBadge"></div>
+          <span class="credit-expiry-inline" id="creditExpiry"></span>
+        </div>
+        <button class="topup-mini-btn" id="openTopupBtn" onclick="openTopupModal()">
+          ➕ เติมเครดิต
+        </button>
+      </div>
+
+      <!-- Topup Modal -->
+      <div class="modal-overlay hidden" id="topupModal">
+        <div class="modal-card topup-card">
+          <div class="modal-head">
+            <div>
+              <span class="pill">เติมเครดิต</span>
+              <h3>เลือกแพ็กเกจและชำระเงิน</h3>
+            </div>
+            <button type="button" class="modal-close-btn" onclick="closeTopupModal()">✕</button>
+          </div>
+
+          <div id="topupStep1">
+            <p style="color:#6b7280;font-size:.9rem;margin:0 0 1rem">เลือกแพ็กเกจที่ต้องการ จากนั้นชำระเงินและแนบสลิป</p>
+            <div class="topup-pkg-grid" id="topupPkgGrid"></div>
+
+            <div class="topup-bank-box" id="topupBankBox">
+              <div class="topup-bank-row"><span>ธนาคาร</span><strong id="topupBankName">-</strong></div>
+              <div class="topup-bank-row"><span>ชื่อบัญชี</span><strong id="topupBankAccName">-</strong></div>
+              <div class="topup-bank-row">
+                <span>เลขบัญชี</span>
+                <div style="display:flex;gap:.5rem;align-items:center">
+                  <strong id="topupBankAccNo">-</strong>
+                  <button type="button" class="copy-btn-sm" onclick="copyTopupAccNo()">คัดลอก</button>
+                </div>
+              </div>
+              <div class="topup-amount-highlight">
+                ยอดที่ต้องโอน: <strong id="topupAmountText">-</strong>
+              </div>
+              <div class="topup-qr-box hidden" id="topupQrBox">
+                <span>QR-code ตามยอดแพ็กเกจ</span>
+                <img id="topupQrImage" alt="QR-code เติมเครดิต" />
+                <small id="topupQrAmount">เลือกแพ็กเกจก่อน</small>
+              </div>
+            </div>
+
+            <div class="slip-upload" style="margin-top:1rem">
+              <label class="slip-dropzone" id="topupSlipDropzone" for="topupSlipInput">
+                <input type="file" id="topupSlipInput" accept="image/*,.pdf" />
+                <div class="slip-icon">📎</div>
+                <div class="slip-text">
+                  <strong>แนบสลิปการโอนเงิน <b class="required-mark">*</b></strong>
+                  <span>กดเลือกไฟล์ หรือลากสลิปมาวางตรงนี้</span>
+                  <small>รองรับ JPG, PNG หรือ PDF</small>
+                </div>
+              </label>
+              <div class="slip-preview hidden" id="topupSlipPreview">
+                <img id="topupSlipImg" alt="สลิป" style="max-height:120px;border-radius:.5rem" />
+                <div>
+                  <b id="topupSlipName">-</b><br>
+                  <button type="button" class="ghost-btn" style="margin-top:.4rem" onclick="clearTopupSlip()">เปลี่ยนไฟล์</button>
+                </div>
+              </div>
+            </div>
+
+            <button class="apply-btn" id="topupSendBtn" onclick="sendTopupRequest()" disabled>
+              📨 ส่งคำขอเติมเครดิต (รอ Company อนุมัติ)
+            </button>
+          </div>
+
+          <div id="topupStep2" class="hidden">
+            <div style="text-align:center;padding:2rem 1rem">
+              <div style="font-size:3rem;margin-bottom:1rem">⏳</div>
+              <h4 style="margin:0 0 .5rem">ส่งคำขอเรียบร้อย</h4>
+              <p style="color:#6b7280;margin:0">รอ Company ตรวจสลิปและอนุมัติเครดิต<br>เครดิตจะเข้าหลังจาก Company กดอนุมัติ</p>
+              <div class="pending-badge" style="margin-top:1rem">🟡 รอการอนุมัติ</div>
+            </div>
+            <button class="apply-btn" style="background:#6b7280" onclick="closeTopupModal()">ปิด</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="prep-grid">
+        <!-- ===== สิ่งที่ต้องเตรียมวันนี้ ===== -->
+        <div class="prep-section" id="prepToday">
+          <div class="prep-header today-header">
+            <span class="prep-header-icon">📋</span>
+            <div class="prep-header-text">
+              <h4>สิ่งที่ต้องเตรียมสำหรับวันนี้</h4>
+              <p id="prepTodayDate">-</p>
+            </div>
+          </div>
+          <div class="prep-body" id="prepTodayBody">
+            <div class="prep-empty">กำลังโหลด...</div>
+          </div>
+        </div>
+
+        <!-- ===== สิ่งที่ต้องเตรียมพรุ่งนี้ ===== -->
+        <div class="prep-section" id="prepTomorrow">
+          <div class="prep-header">
+            <span class="prep-header-icon">🌅</span>
+            <div class="prep-header-text">
+              <h4>สิ่งที่ต้องเตรียมสำหรับพรุ่งนี้</h4>
+              <p id="prepTomorrowDate">-</p>
+            </div>
+          </div>
+          <div class="prep-body" id="prepTomorrowBody">
+            <div class="prep-empty">กำลังโหลด...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== ตั้งค่าราคาและบัญชีโอน (panel ซ่อน) ===== -->
+      <section class="admin-grid settings-panel" id="settingsPanel">
+        <div class="admin-card">
+          <div class="section-mini-head">
+            <h4>⚙️ ตั้งค่าราคาและบัญชีโอน</h4>
+            <p>ข้อมูลจะบันทึกลงชีต Settings</p>
+            <button type="button" class="panel-close-btn" onclick="closeAdminPanel('settings')" aria-label="ปิด">✕</button>
+          </div>
+
+          <form id="settingsForm" class="settings-form">
+            <div class="field">
+              <label>ราคาหมูกระทะ / ชุด</label>
+              <input type="number" id="settingMookataPrice" min="0" />
+            </div>
+            <div class="field">
+              <label>ราคาเตียงเสริม / เตียง</label>
+              <input type="number" id="settingExtraBedPrice" min="0" />
+            </div>
+            <div class="field">
+              <label>ชื่อธนาคาร</label>
+              <input type="text" id="settingBankName" placeholder="เช่น ธ.กสิกรไทย" />
+            </div>
+            <div class="field">
+              <label>ชื่อบัญชี</label>
+              <input type="text" id="settingBankAccountName" placeholder="เช่น โฮมสเตย์ กรีนสเตย์" />
+            </div>
+            <div class="field">
+              <label>เลขบัญชี</label>
+              <input type="text" id="settingBankAccountNumber" placeholder="เช่น 123-4-56789-0" />
+            </div>
+            <div class="field">
+              <label>เลขพร้อมเพย์สำหรับ QR</label>
+              <input type="text" id="settingPromptPayId" placeholder="เบอร์พร้อมเพย์ / เลขบัตรประชาชน / e-Wallet" />
+              <small class="input-hint">ถ้าไม่กรอก ระบบจะลองใช้เลขบัญชีด้านบนในการสร้าง QR ตามยอดรวม</small>
+            </div>
+            <div class="field">
+              <label>ลิงก์เพจ</label>
+              <input type="url" id="settingPageUrl" placeholder="https://facebook.com/..." />
+            </div>
+            <div class="field">
+              <label>ลิงก์ GPS</label>
+              <input type="url" id="settingGpsUrl" placeholder="https://maps.app.goo.gl/..." />
+            </div>
+            <div class="field full">
+              <label>ชื่อเว็บไซต์</label>
+              <input type="text" id="settingSiteName" placeholder="เช่น Wintery House" />
+            </div>
+            <div class="field full">
+              <label>โลโก้เว็บไซต์</label>
+              <div class="room-image-choice">
+                <label class="image-upload-box" for="settingLogoFileInput">
+                  <input type="file" id="settingLogoFileInput" accept="image/*" />
+                  <strong>อัปโหลดโลโก้</strong>
+                  <span id="settingLogoFileName">ยังไม่ได้เลือกไฟล์</span>
+                  <small>รองรับ JPG, PNG, WEBP ขนาดไม่เกิน 2MB</small>
+                  <img class="upload-preview hidden" id="settingLogoPreview" alt="ตัวอย่างโลโก้" />
+                </label>
+              </div>
+              <small class="input-hint">โลโก้นี้จะใช้กับหน้า Index, Customer, Admin, Company และ icon บนแท็บเว็บ</small>
+            </div>
+            <div class="field full">
+              <label>นโยบายที่พัก</label>
+              <textarea id="settingPropertyPolicy" rows="6" placeholder="ใส่นโยบายที่พักที่ต้องการให้ลูกค้าอ่านก่อนจอง"></textarea>
+            </div>
+            <button type="submit">บันทึกการตั้งค่า</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- ===== เพิ่มห้องพัก (panel ซ่อน) ===== -->
+      <section class="admin-grid rooms-panel" id="roomsPanel">
+        <div class="admin-card">
+          <div class="section-mini-head">
+            <h4>🏠 เพิ่มห้องพัก</h4>
+            <p>ห้องใหม่จะไปแสดงที่หน้าลูกค้า</p>
+            <button type="button" class="panel-close-btn" onclick="closeAdminPanel('rooms')" aria-label="ปิด">✕</button>
+          </div>
+          <form id="roomForm" class="settings-form">
+            <div class="field">
+              <label>ชื่อห้อง</label>
+              <input type="text" id="roomNameInput" placeholder="เช่น ห้องวิวสวน" required />
+            </div>
+            <div class="field">
+              <label>ราคา / คืน</label>
+              <input type="number" id="roomPriceInput" min="0" placeholder="เช่น 990" required />
+            </div>
+            <div class="field full">
+              <label>รายละเอียดห้อง</label>
+              <textarea id="roomDetailInput" rows="6" placeholder="พิมพ์รายละเอียดห้องพักได้เลย&#10;กด Enter เพื่อขึ้นบรรทัดใหม่"></textarea>
+              <small class="input-hint">ระบบจะแสดงรายละเอียดตามที่พิมพ์ เหมือนนโยบายที่พัก</small>
+            </div>
+            <div class="field full">
+              <label>รูปห้องพัก</label>
+              <div class="room-image-choice">
+                <input type="hidden" id="roomImageInput" value="" />
+                <label class="image-upload-box" for="roomImageFileInput">
+                  <input type="file" id="roomImageFileInput" accept="image/jpeg,image/png,image/webp" multiple />
+                  <strong>อัปโหลดรูปภาพ</strong>
+                  <span id="roomImageFileName">ยังไม่ได้เลือกไฟล์</span>
+                  <small>รองรับ JPG, PNG, WEBP เลือกได้สูงสุด 5 รูป รูปละไม่เกิน 5MB</small>
+                  <img class="upload-preview hidden" id="roomImagePreview" alt="ตัวอย่างรูปห้องพัก" />
+                </label>
+              </div>
+              <small class="input-hint">แนะนำให้อัปโหลดไฟล์ JPG/PNG/WEBP โดยตรง หลีกเลี่ยงลิงก์ Facebook/Line เพราะลิงก์อาจหมดอายุ</small>
+            </div>
+            <button type="submit">เพิ่มห้องพัก</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- ===== รายการห้องพัก (panel ซ่อน) ===== -->
+      <section class="admin-card room-manage-card rooms-panel" id="roomListPanel" style="display:none">
+        <div class="section-mini-head">
+          <h4>📋 รายการห้องพัก</h4>
+          <p>แก้ไขราคา/รายละเอียด หรือปิดการแสดงผลได้</p>
+          <button type="button" class="panel-close-btn" onclick="closeAdminPanel('roomlist')" aria-label="ปิด">✕</button>
+        </div>
+        <div class="room-card-grid" id="roomTable">
+          <div class="empty">กำลังโหลดห้องพัก...</div>
+        </div>
+      </section>
+
+      <div class="modal-overlay hidden" id="roomCloseModal" onclick="if(event.target.id==='roomCloseModal') cancelRoomCloseModal()">
+        <div class="modal-card room-close-card">
+          <div class="modal-head">
+            <div>
+              <span class="pill">ปิดห้องพัก</span>
+              <h3 id="roomCloseTitle">เลือกวันที่สิ้นสุด</h3>
+            </div>
+            <button type="button" class="modal-close-btn" onclick="cancelRoomCloseModal()" aria-label="ปิด">✕</button>
+          </div>
+          <p class="room-close-note" id="roomCloseNote">เลือกวันที่ที่ต้องการปิดห้องถึงวันนั้น</p>
+          <div class="room-close-calendar">
+            <div class="calendar-head">
+              <button type="button" id="roomClosePrevBtn">‹</button>
+              <strong id="roomCloseMonthText">-</strong>
+              <button type="button" id="roomCloseNextBtn">›</button>
+            </div>
+            <div class="calendar-weekdays">
+              <span>อา</span><span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span>
+            </div>
+            <div class="room-close-calendar-grid" id="roomCloseCalendarGrid"></div>
+          </div>
+          <div class="room-close-footer">
+            <div class="room-close-summary">
+              <span class="summary-icon">📅</span>
+              <div>
+                <span>ปิดถึงวันที่</span>
+                <strong id="roomCloseSelectedText">ยังไม่ได้เลือก</strong>
+              </div>
+            </div>
+            <div class="room-close-actions">
+              <button type="button" class="room-close-cancel" onclick="cancelRoomCloseModal()">ยกเลิก</button>
+              <button type="button" class="room-close-confirm" id="roomCloseConfirmBtn" onclick="confirmRoomCloseModal()" disabled>ยืนยันปิดห้อง</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== ดูรายละเอียดทั้งหมด ===== -->
+      <section class="admin-card admin-calendar-card" id="allDetails">
+        <div class="section-mini-head">
+          <div>
+            <h4>ดูรายละเอียดทั้งหมด</h4>
+            <p>ปฏิทินสถานะการจอง สีเขียว = ว่าง สีแดง = มีการจอง</p>
+          </div>
+        </div>
+
+        <div class="admin-calendar-layout">
+          <div class="admin-calendar-box">
+            <div class="calendar-head">
+              <button type="button" id="adminPrevMonthBtn">‹</button>
+              <strong id="adminCalendarMonthText">-</strong>
+              <button type="button" id="adminNextMonthBtn">›</button>
+            </div>
+            <div class="calendar-legend">
+              <span><i class="dot available"></i>ว่าง</span>
+              <span><i class="dot booked"></i>มีการจอง</span>
+              <span><i class="dot selected"></i>วันที่เลือก</span>
+            </div>
+            <div class="calendar-weekdays">
+              <span>อา</span><span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span>
+            </div>
+            <div class="calendar-grid admin-calendar-grid" id="adminCalendarGrid"></div>
+          </div>
+
+          <div class="date-detail-panel">
+            <div class="date-detail-head">
+              <span>รายละเอียดวันที่เลือก</span>
+              <strong id="adminSelectedDateText">ยังไม่เลือกวันที่</strong>
+            </div>
+            <div id="adminDateDetailList" class="date-detail-list">
+              <div class="empty">กดวันที่ในปฏิทินเพื่อดูรายละเอียดลูกค้าที่จอง</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="stats owner-stats">
+        <div class="stat-card stat-total">
+          <span>จองทั้งหมด</span>
+          <strong id="totalBookings">0</strong>
+        </div>
+        <div class="stat-card stat-pending">
+          <span>รอยืนยัน</span>
+          <strong id="pendingBookings">0</strong>
+        </div>
+        <div class="stat-card stat-confirmed">
+          <span>ยืนยันแล้ว</span>
+          <strong id="confirmedBookings">0</strong>
+        </div>
+        <div class="stat-card stat-cancelled">
+          <span>ยกเลิก</span>
+          <strong id="cancelledBookings">0</strong>
+        </div>
+        <div class="stat-card stat-revenue">
+          <span>รายได้ประมาณการ</span>
+          <strong id="totalRevenue">฿0</strong>
+        </div>
+      </div>
+
+      <div class="tools">
+        <input type="text" id="searchBooking" placeholder="ค้นหาชื่อลูกค้า / เบอร์โทร / ห้อง" />
+        <select id="statusFilter">
+          <option value="all">สถานะทั้งหมด</option>
+          <option value="รอยืนยัน">รอยืนยัน</option>
+          <option value="ยืนยันแล้ว">ยืนยันแล้ว</option>
+          <option value="รอชำระเงิน">รอชำระเงิน</option>
+          <option value="ชำระแล้ว">ชำระแล้ว</option>
+          <option value="ยกเลิก">ยกเลิก</option>
+        </select>
+        <button id="exportCsvBtn">Export CSV</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ลูกค้า</th><th>ห้อง / วันที่</th><th>บริการเสริม</th>
+              <th>ชำระเงิน</th><th>ยอดรวม</th><th>สถานะ</th><th>จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="bookingTable">
+            <tr><td colspan="7" class="empty">กำลังโหลดข้อมูล...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="app-config.js"></script>
+  <script src="api.js"></script>
+  <script src="admin.js"></script>
+  <script>
+    // ===== HAMBURGER =====
+    function toggleHamburger() {
+      const btn = document.getElementById('hamburgerBtn');
+      const dd  = document.getElementById('hamburgerDropdown');
+      btn.classList.toggle('open');
+      dd.classList.toggle('open');
+    }
+    function closeHamburgerPopup() {
+      document.getElementById('hamburgerBtn').classList.remove('open');
+      document.getElementById('hamburgerDropdown').classList.remove('open');
+    }
+    document.getElementById('hamburgerDropdown').addEventListener('click', e => {
+      if (e.target.id === 'hamburgerDropdown') closeHamburgerPopup();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeHamburgerPopup();
+    });
+
+    // ===== SHOW PANEL =====
+    let activePanel = null;
+    function showPanel(name) {
+      // close hamburger popup
+      closeHamburgerPopup();
+
+      const settingsEl = document.getElementById('settingsPanel');
+      const roomsEl    = document.getElementById('roomsPanel');
+      const roomListEl = document.getElementById('roomListPanel');
+
+      if (name === 'settings') {
+        const open = settingsEl.classList.contains('visible');
+        settingsEl.classList.toggle('visible', !open);
+        roomsEl.classList.remove('visible');
+        roomListEl.style.display = 'none';
+        if (!open) settingsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (name === 'rooms') {
+        const open = roomsEl.classList.contains('visible');
+        roomsEl.classList.toggle('visible', !open);
+        settingsEl.classList.remove('visible');
+        roomListEl.style.display = 'none';
+        if (!open) roomsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (name === 'roomlist') {
+        const isHidden = roomListEl.style.display === 'none';
+        roomListEl.style.display = isHidden ? 'block' : 'none';
+        settingsEl.classList.remove('visible');
+        roomsEl.classList.remove('visible');
+        if (isHidden) roomListEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function closeAdminPanel(name) {
+      const settingsEl = document.getElementById('settingsPanel');
+      const roomsEl    = document.getElementById('roomsPanel');
+      const roomListEl = document.getElementById('roomListPanel');
+
+      if (name === 'settings') settingsEl.classList.remove('visible');
+      if (name === 'rooms') roomsEl.classList.remove('visible');
+      if (name === 'roomlist') roomListEl.style.display = 'none';
+    }
+  </script>
+</body>
+</html>

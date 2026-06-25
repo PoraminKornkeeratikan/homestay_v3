@@ -1276,6 +1276,502 @@ td small {
   }
 }
 
+/* Final override: topup modal must stay centered and inside the viewport. */
+#topupModal.modal-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: clamp(10px, 3vw, 20px);
+  overflow: hidden;
+}
+
+#topupModal.modal-overlay .topup-card {
+  width: min(520px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  margin: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+#topupModal.modal-overlay .topup-card * {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  #topupModal.modal-overlay {
+    padding: 10px;
+  }
+
+  #topupModal.modal-overlay .topup-card {
+    width: calc(100vw - 20px);
+    max-width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+    border-radius: 18px;
+    padding: 14px;
+  }
+
+  #topupModal.modal-overlay .modal-head h3 {
+    font-size: 20px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  #topupModal.modal-overlay .topup-pkg-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: .7rem;
+  }
+
+  #topupModal.modal-overlay .topup-pkg-card,
+  #topupModal.modal-overlay .topup-bank-box {
+    padding: 12px;
+  }
+
+  #topupModal.modal-overlay .topup-pkg-card {
+    min-height: 104px;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 2px;
+    padding: 10px 8px;
+    border-width: 1.5px;
+    border-radius: 12px;
+  }
+
+  #topupModal.modal-overlay .tpkg-label {
+    font-size: .68rem;
+    line-height: 1.15;
+  }
+
+  #topupModal.modal-overlay .tpkg-credits {
+    font-size: .98rem;
+    line-height: 1.18;
+  }
+
+  #topupModal.modal-overlay .tpkg-price {
+    font-size: .82rem;
+    line-height: 1.2;
+  }
+
+  #topupModal.modal-overlay .tpkg-rate {
+    margin-top: 3px;
+    padding: .16rem .44rem;
+    font-size: .68rem;
+  }
+
+  #topupModal.modal-overlay .topup-bank-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+
+  #topupModal.modal-overlay .topup-bank-row > div {
+    flex-wrap: wrap;
+  }
+}
+
+/* Last-pass compact package layout for mobile topup modal. */
+@media (max-width: 640px) {
+  #topupModal.modal-overlay #topupStep1 > p {
+    margin-bottom: .65rem !important;
+    font-size: .82rem !important;
+    line-height: 1.45;
+  }
+
+  #topupModal.modal-overlay .topup-pkg-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: .7rem;
+  }
+
+  #topupModal.modal-overlay .topup-pkg-card {
+    min-height: 104px;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 2px;
+    padding: 10px 8px;
+    border-width: 1.5px;
+    border-radius: 12px;
+    text-align: center;
+  }
+
+  #topupModal.modal-overlay .tpkg-label {
+    font-size: .68rem;
+    line-height: 1.15;
+  }
+
+  #topupModal.modal-overlay .tpkg-credits {
+    font-size: .98rem;
+    line-height: 1.18;
+  }
+
+  #topupModal.modal-overlay .tpkg-price {
+    font-size: .82rem;
+    line-height: 1.2;
+  }
+
+  #topupModal.modal-overlay .tpkg-rate {
+    margin-top: 3px;
+    padding: .16rem .44rem;
+    font-size: .68rem;
+  }
+}
+
+@media (max-width: 340px) {
+  #topupModal.modal-overlay .topup-pkg-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Mobile only: put selected-date details below the owner calendar. */
+@media (max-width: 760px) {
+  .admin-calendar-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .admin-calendar-box {
+    order: 1;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .date-detail-panel {
+    order: 2;
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+/* Tablet owner calendar: use the same readable stacked layout as mobile. */
+@media (min-width: 700px) and (max-width: 1024px) {
+  .admin-calendar-card {
+    border-radius: 24px;
+    padding: 20px;
+  }
+
+  .admin-calendar-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 16px;
+    width: 100%;
+  }
+
+  .admin-calendar-box,
+  .date-detail-panel {
+    width: 100%;
+    min-width: 0;
+    border-radius: 20px;
+  }
+
+  .admin-calendar-box {
+    order: 1;
+  }
+
+  .date-detail-panel {
+    order: 2;
+  }
+
+  .admin-calendar-grid .calendar-day {
+    min-height: 68px;
+  }
+}
+
+/* iPad mini/tablet: keep today's and tomorrow's prep cards side by side. */
+@media (min-width: 700px) and (max-width: 1024px) {
+  .prep-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px;
+  }
+
+  .prep-section {
+    min-width: 0;
+  }
+}
+
+/* iPad mini/tablet: make owner stats fit the screen in one readable row. */
+@media (min-width: 700px) and (max-width: 1024px) {
+  .owner-stats.stats {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 12px;
+    margin: 18px 0;
+  }
+
+  .owner-stats .stat-card {
+    position: relative;
+    min-height: 112px;
+    padding: 14px 14px 13px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(244,251,247,.9));
+    box-shadow: 0 12px 28px rgba(15, 61, 46, .08);
+  }
+
+  .owner-stats .stat-card::before {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    background: #e8f6ef;
+    color: var(--green-800);
+    font-size: 14px;
+    font-weight: 900;
+  }
+
+  .owner-stats .stat-total::before { content: "Σ"; }
+  .owner-stats .stat-pending::before { content: "..."; }
+  .owner-stats .stat-confirmed::before { content: "✓"; }
+  .owner-stats .stat-cancelled::before { content: "×"; }
+  .owner-stats .stat-revenue::before { content: "฿"; }
+
+  .owner-stats .stat-card span {
+    display: block;
+    min-height: 30px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.25;
+    font-weight: 800;
+  }
+
+  .owner-stats .stat-card strong {
+    margin-top: 8px;
+    font-size: 27px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .owner-stats .stat-revenue {
+    grid-column: auto;
+  }
+
+  .owner-stats .stat-revenue strong {
+    font-size: 25px;
+  }
+}
+
+/* Remove text-based stat icons to avoid encoding artifacts on some devices. */
+.owner-stats .stat-card::before {
+  content: none !important;
+  display: none !important;
+}
+
+@media (max-width: 640px) {
+  .owner-stats .stat-card {
+    padding: 14px !important;
+  }
+}
+
+@media (min-width: 700px) and (max-width: 1024px) {
+  .owner-stats .stat-card {
+    padding: 14px !important;
+  }
+}
+
+/* Mobile owner stats: compact dashboard cards. */
+@media (max-width: 640px) {
+  .owner-stats.stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px;
+    margin: 16px 0;
+  }
+
+  .owner-stats .stat-card {
+    position: relative;
+    min-height: 92px;
+    padding: 13px 14px 12px 48px;
+    border-radius: 18px;
+    overflow: hidden;
+    background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(244,251,247,.9));
+    box-shadow: 0 12px 28px rgba(15, 61, 46, .08);
+  }
+
+  .owner-stats .stat-card::before {
+    position: absolute;
+    left: 13px;
+    top: 14px;
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    background: #e8f6ef;
+    color: var(--green-800);
+    font-size: 14px;
+    font-weight: 900;
+  }
+
+  .owner-stats .stat-total::before { content: "Σ"; }
+  .owner-stats .stat-pending::before { content: "..."; }
+  .owner-stats .stat-confirmed::before { content: "✓"; }
+  .owner-stats .stat-cancelled::before { content: "×"; }
+  .owner-stats .stat-revenue::before { content: "฿"; }
+
+  .owner-stats .stat-card span {
+    display: block;
+    font-size: 11px;
+    line-height: 1.2;
+    font-weight: 800;
+  }
+
+  .owner-stats .stat-card strong {
+    margin-top: 7px;
+    font-size: 25px;
+    line-height: 1;
+  }
+
+  .owner-stats .stat-revenue {
+    grid-column: 1 / -1;
+    min-height: 82px;
+    padding-right: 16px;
+  }
+
+  .owner-stats .stat-revenue strong {
+    font-size: 28px;
+  }
+}
+
+html.topup-modal-open {
+  overflow: hidden;
+}
+
+body.topup-modal-open {
+  position: fixed;
+  left: 0;
+  right: 0;
+  width: 100%;
+  overflow: hidden;
+  touch-action: none;
+}
+
+body.topup-modal-open #topupModal,
+body.topup-modal-open #topupModal .topup-card {
+  touch-action: pan-y;
+}
+
+/* Compact package picker inside the owner topup modal. */
+@media (max-width: 640px) {
+  #topupModal.modal-overlay #topupStep1 > p {
+    margin-bottom: .65rem !important;
+    font-size: .82rem !important;
+    line-height: 1.45;
+  }
+
+  #topupModal.modal-overlay .topup-pkg-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: .7rem;
+  }
+
+  #topupModal.modal-overlay .topup-pkg-card {
+    min-height: 104px;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 2px;
+    padding: 10px 8px;
+    border-width: 1.5px;
+    border-radius: 12px;
+    text-align: center;
+  }
+
+  #topupModal.modal-overlay .tpkg-label {
+    font-size: .68rem;
+    line-height: 1.15;
+  }
+
+  #topupModal.modal-overlay .tpkg-credits {
+    font-size: .98rem;
+    line-height: 1.18;
+  }
+
+  #topupModal.modal-overlay .tpkg-price {
+    font-size: .82rem;
+    line-height: 1.2;
+  }
+
+  #topupModal.modal-overlay .tpkg-rate {
+    margin-top: 3px;
+    padding: .16rem .44rem;
+    font-size: .68rem;
+  }
+}
+
+@media (max-width: 340px) {
+  #topupModal.modal-overlay .topup-pkg-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Keep the owner topup modal fully visible on small screens. */
+#topupModal {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  padding: clamp(10px, 3vw, 20px);
+  place-items: center;
+  overflow: hidden;
+}
+
+#topupModal .topup-card {
+  width: min(520px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  margin: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+#topupModal .topup-card * {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  #topupModal {
+    padding: 10px;
+  }
+
+  #topupModal .topup-card {
+    width: calc(100vw - 20px);
+    max-width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+    border-radius: 18px;
+    padding: 14px;
+  }
+
+  #topupModal .modal-head h3 {
+    font-size: 20px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  #topupModal .topup-pkg-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #topupModal .topup-pkg-card {
+    padding: 12px;
+  }
+
+  #topupModal .topup-bank-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+
+  #topupModal .topup-bank-row > div {
+    flex-wrap: wrap;
+  }
+}
+
 
 .selected-room-banner {
   display: flex;
@@ -3526,5 +4022,358 @@ body.is-loading-popup {
 
   table {
     min-width: 680px;
+  }
+}
+
+/* Room detail popup gallery */
+body.modal-open {
+  overflow: hidden;
+}
+
+.room-detail-modal-card {
+  width: min(900px, calc(100vw - 28px));
+}
+
+.room-detail-gallery {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(240px, 1fr);
+  gap: 12px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: inline mandatory;
+  padding: 2px 2px 12px;
+  margin: 4px 0 14px;
+}
+
+.room-detail-gallery-item {
+  height: clamp(220px, 42vw, 420px);
+  margin: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--green-100);
+  scroll-snap-align: start;
+}
+
+.room-detail-gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.room-detail-gallery-empty {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: 18px;
+  background: var(--green-50);
+}
+
+.room-detail-modal-text {
+  color: var(--muted);
+  line-height: 1.75;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--green-50);
+  max-height: 180px;
+  overflow: auto;
+}
+
+.room-detail-modal-actions {
+  margin-top: 16px;
+}
+
+.room-gallery-count {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+@media (max-width: 560px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  .topbar {
+    position: static;
+    padding: 12px;
+    flex-direction: column;
+  }
+
+  .brand {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .brand h1 {
+    font-size: 18px;
+  }
+
+  .brand p {
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  nav,
+  .customer-only-nav,
+  .admin-header-actions {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: 16px;
+  }
+
+  .hero {
+    min-height: auto;
+    gap: 12px;
+  }
+
+  .hero-text,
+  .hero-card,
+  .booking-panel,
+  .admin-card,
+  .login-card,
+  .table-wrap {
+    border-radius: 18px;
+  }
+
+  .hero-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .primary-link,
+  .secondary-link,
+  .ghost-link {
+    width: 100%;
+    text-align: center;
+  }
+
+  .room-meta,
+  .selected-room-banner,
+  .modal-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .room-meta button,
+  .detail-toggle-btn,
+  .selected-room-banner button,
+  .modal-actions button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .room-detail-modal-card {
+    width: calc(100vw - 20px);
+  }
+
+  .room-detail-gallery {
+    grid-auto-columns: 86%;
+  }
+
+  .room-detail-gallery-item {
+    height: 250px;
+    border-radius: 14px;
+  }
+
+  .room-detail-modal-text {
+    max-height: 210px;
+    font-size: 13px;
+  }
+
+  .room-admin-fields,
+  .room-card-actions,
+  .tools,
+  .date-summary,
+  .addon-grid,
+  .payment-layout {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Final override: topup modal must stay centered and inside the viewport. */
+#topupModal.modal-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: clamp(10px, 3vw, 20px);
+  overflow: hidden;
+}
+
+#topupModal.modal-overlay .topup-card {
+  width: min(520px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  margin: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+#topupModal.modal-overlay .topup-card * {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  #topupModal.modal-overlay {
+    padding: 10px;
+  }
+
+  #topupModal.modal-overlay .topup-card {
+    width: calc(100vw - 20px);
+    max-width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+    border-radius: 18px;
+    padding: 14px;
+  }
+
+  #topupModal.modal-overlay .modal-head h3 {
+    font-size: 20px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  #topupModal.modal-overlay .topup-pkg-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #topupModal.modal-overlay .topup-pkg-card,
+  #topupModal.modal-overlay .topup-bank-box {
+    padding: 12px;
+  }
+
+  #topupModal.modal-overlay .topup-bank-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+
+  #topupModal.modal-overlay .topup-bank-row > div {
+    flex-wrap: wrap;
+  }
+}
+
+/* Last-pass compact package layout for mobile topup modal. */
+@media (max-width: 640px) {
+  #topupModal.modal-overlay #topupStep1 > p {
+    margin-bottom: .65rem !important;
+    font-size: .82rem !important;
+    line-height: 1.45;
+  }
+
+  #topupModal.modal-overlay .topup-pkg-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: .7rem;
+  }
+
+  #topupModal.modal-overlay .topup-pkg-card {
+    min-height: 104px;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 2px;
+    padding: 10px 8px;
+    border-width: 1.5px;
+    border-radius: 12px;
+    text-align: center;
+  }
+
+  #topupModal.modal-overlay .tpkg-label {
+    font-size: .68rem;
+    line-height: 1.15;
+  }
+
+  #topupModal.modal-overlay .tpkg-credits {
+    font-size: .98rem;
+    line-height: 1.18;
+  }
+
+  #topupModal.modal-overlay .tpkg-price {
+    font-size: .82rem;
+    line-height: 1.2;
+  }
+
+  #topupModal.modal-overlay .tpkg-rate {
+    margin-top: 3px;
+    padding: .16rem .44rem;
+    font-size: .68rem;
+  }
+}
+
+@media (max-width: 340px) {
+  #topupModal.modal-overlay .topup-pkg-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Last-pass mobile owner stats layout. */
+@media (max-width: 640px) {
+  .owner-stats.stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px;
+    margin: 16px 0;
+  }
+
+  .owner-stats .stat-card {
+    position: relative;
+    min-height: 92px;
+    padding: 13px 14px 12px 48px;
+    border-radius: 18px;
+    overflow: hidden;
+    background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(244,251,247,.9));
+    box-shadow: 0 12px 28px rgba(15, 61, 46, .08);
+  }
+
+  .owner-stats .stat-card::before {
+    position: absolute;
+    left: 13px;
+    top: 14px;
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    background: #e8f6ef;
+    color: var(--green-800);
+    font-size: 14px;
+    font-weight: 900;
+  }
+
+  .owner-stats .stat-total::before { content: "Σ"; }
+  .owner-stats .stat-pending::before { content: "..."; }
+  .owner-stats .stat-confirmed::before { content: "✓"; }
+  .owner-stats .stat-cancelled::before { content: "×"; }
+  .owner-stats .stat-revenue::before { content: "฿"; }
+
+  .owner-stats .stat-card span {
+    display: block;
+    font-size: 11px;
+    line-height: 1.2;
+    font-weight: 800;
+  }
+
+  .owner-stats .stat-card strong {
+    margin-top: 7px;
+    font-size: 25px;
+    line-height: 1;
+  }
+
+  .owner-stats .stat-revenue {
+    grid-column: 1 / -1;
+    min-height: 82px;
+    padding-right: 16px;
+  }
+
+  .owner-stats .stat-revenue strong {
+    font-size: 28px;
   }
 }

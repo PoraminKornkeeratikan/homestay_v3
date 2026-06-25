@@ -150,14 +150,10 @@ function renderRoomDetail(detail, roomName = "", roomId = "") {
   }
 
   const safeId = escapeHtml(roomId || roomName).replace(/\s+/g, "_");
-  const safeText = escapeHtml(text).replace(/\r?\n/g, "<br>");
   return `
-    <button type="button" class="detail-toggle-btn" onclick="toggleRoomDetail('${safeId}')">
+    <button type="button" class="detail-toggle-btn" onclick="openRoomDetailModal('${safeId}')">
       ℹ️ ดูรายละเอียดห้องพัก
-    </button>
-    <div class="room-detail-collapse hidden" id="detail_${safeId}">
-      <p class="room-detail-text">${safeText}</p>
-    </div>`;
+    </button>`;
 }
 
 function toggleRoomDetail(safeId) {
@@ -172,6 +168,101 @@ function toggleRoomDetail(safeId) {
       : "✕ ซ่อนรายละเอียด";
   }
 }
+
+function roomSafeId(room = {}) {
+  return escapeHtml(room.id || room.name || "").replace(/\s+/g, "_");
+}
+
+function getRoomGalleryImages(room = {}) {
+  const images = [];
+  const addImage = value => {
+    const url = String(value || "").trim();
+    if (url && !images.includes(url)) images.push(url);
+  };
+
+  addImage(room.image);
+
+  if (Array.isArray(room.galleryImages)) {
+    room.galleryImages.forEach(addImage);
+  } else if (typeof room.galleryImages === "string") {
+    try {
+      const parsed = JSON.parse(room.galleryImages);
+      if (Array.isArray(parsed)) parsed.forEach(addImage);
+    } catch {
+      room.galleryImages.split("|").forEach(addImage);
+    }
+  }
+
+  return images.slice(0, 5);
+}
+
+function ensureRoomDetailModal() {
+  let modal = document.getElementById("roomDetailModal");
+  if (modal) return modal;
+
+  modal = document.createElement("div");
+  modal.id = "roomDetailModal";
+  modal.className = "modal-overlay room-detail-modal hidden";
+  modal.innerHTML = `
+    <div class="modal-card room-detail-modal-card">
+      <div class="modal-head">
+        <div>
+          <span class="pill">รายละเอียดห้องพัก</span>
+          <h3 id="roomDetailModalTitle">-</h3>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeRoomDetailModal()" aria-label="ปิด">×</button>
+      </div>
+      <div class="room-detail-gallery" id="roomDetailGallery"></div>
+      <div class="room-detail-modal-text" id="roomDetailModalText"></div>
+      <div class="modal-actions room-detail-modal-actions">
+        <button type="button" class="ghost-btn" onclick="closeRoomDetailModal()">ปิด</button>
+        <button type="button" id="roomDetailBookBtn">จองห้องนี้</button>
+      </div>
+    </div>`;
+
+  modal.addEventListener("click", event => {
+    if (event.target.id === "roomDetailModal") closeRoomDetailModal();
+  });
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function openRoomDetailModal(safeId) {
+  const room = activeRooms().find(item => roomSafeId(item) === safeId);
+  if (!room) return;
+
+  const modal = ensureRoomDetailModal();
+  const images = getRoomGalleryImages(room);
+  const detail = normalizeRoomDetailText(room.detail || "", room.name) || "ห้องพักของโฮมสเตย์";
+
+  document.getElementById("roomDetailModalTitle").textContent = room.name;
+  document.getElementById("roomDetailModalText").innerHTML = escapeHtml(detail).replace(/\r?\n/g, "<br>");
+  document.getElementById("roomDetailGallery").innerHTML = images.length
+    ? images.map((image, index) => `
+        <figure class="room-detail-gallery-item">
+          <img src="${escapeHtml(image)}" alt="${escapeHtml(room.name)} ${index + 1}" loading="lazy" referrerpolicy="no-referrer" />
+        </figure>
+      `).join("")
+    : `<div class="room-detail-gallery-empty">ยังไม่มีรูปเพิ่มเติม</div>`;
+
+  document.getElementById("roomDetailBookBtn").onclick = () => {
+    closeRoomDetailModal();
+    selectRoom(room.id);
+  };
+
+  modal.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+}
+
+function closeRoomDetailModal() {
+  const modal = document.getElementById("roomDetailModal");
+  if (modal) modal.classList.add("hidden");
+  document.body.classList.remove("modal-open");
+}
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape") closeRoomDetailModal();
+});
 
 function renderImageBlock(imageUrl, altText, className = "room-img") {
   const url = String(imageUrl || "").trim();
