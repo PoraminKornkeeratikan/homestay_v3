@@ -57,10 +57,10 @@ const DEFAULT_SETTINGS = {
   }
 };
 
-const BOOKING_FEE = 0;
+const BOOKING_FEE = 40;
 
 // ======= CREDIT SYSTEM =======
-const CREDIT_PER_BOOKING = 0;   // เครดิตที่ใช้ต่อการจอง 1 ครั้ง
+const CREDIT_PER_BOOKING = 40;   // เครดิตที่ใช้ต่อการจอง 1 ครั้ง
 const COMPANY_PASSWORD = "1234"; // รหัสผ่านหน้า company
 
 const TOPUP_PAYMENT_SETTINGS = {
@@ -71,10 +71,12 @@ const TOPUP_PAYMENT_SETTINGS = {
 };
 
 const CREDIT_PACKAGES = [
-  { credits: 1000, price: 1000,  label: "🥉 เริ่มต้น",  unitCost: "50 ห้อง" },
-  { credits: 2000, price: 2000,  label: "🥈 ธรรมดา",    unitCost: "100 ห้อง" },
-  { credits: 4000, price: 4000,  label: "🥇 โปร",      unitCost: "200 ห้อง" },
-  { credits: 0,    price: 20000, label: "📅 รายปี",    unitCost: "฿1,666/เดือน", type: "yearly" },
+  { credits: 800, price: 400,  label: "🧪 ทดลอง", unitCost: "20 ห้อง" },
+  { credits: 2000, price: 1000,  label: "🥉 เริ่มต้น", unitCost: "50 ห้อง" },
+  { credits: 4000, price: 2000,  label: "🥈 ธรรมดา", unitCost: "100 ห้อง" },
+  { credits: 8000, price: 4000,  label: "🥇 โปร", unitCost: "200 ห้อง" },
+  { credits: 20000, price: 10000,  label: "👑 โปรแม็ก", unitCost: "500 ห้อง" },
+  { credits: 40000, price: 20000,  label: "🕐 ใช้ยาวๆ", unitCost: "1000 ห้อง" },
 ];
 
 // helpers เครดิต (ใช้ localStorage key: hs_credits, hs_plan, hs_plan_start, hs_plan_type)
