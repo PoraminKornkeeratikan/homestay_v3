@@ -220,12 +220,12 @@
 
           <div class="slip-upload">
             <label class="slip-dropzone" id="slipDropzone" for="transferSlip">
-              <input type="file" id="transferSlip" accept="image/*,.pdf" required />
+              <input type="file" id="transferSlip" accept="image/*" required />
               <div class="slip-icon" id="slipIcon">📎</div>
               <div class="slip-text">
                 <strong>แนบสลิปการโอนเงิน <b class="required-mark">*</b></strong>
                 <span>กดเลือกไฟล์ หรือลากสลิปมาวางตรงนี้</span>
-                <small>รองรับ JPG, PNG หรือ PDF ขนาดไม่เกิน 5MB</small>
+                <small>รองรับ JPG, PNG หรือ WEBP ขนาดไม่เกิน 5MB</small>
               </div>
               <div class="slip-pill" id="slipFileName">ยังไม่ได้เลือกไฟล์</div>
             </label>
@@ -299,19 +299,9 @@
         <div class="ticket-lines" id="ticketDetails"></div>
       </div>
 
-      <div class="capture-warning">
-        <b>สำคัญ:</b> กรุณาแคปหน้าจอนี้ หรือกดปุ่ม “บันทึกรูปภาพ” เพื่อใช้ยื่นตอนมาเข้าพัก
-      </div>
-
-      <label class="capture-check">
-        <input type="checkbox" id="captureDoneCheck" />
-        <span>ฉันแคปหน้าจอไว้แล้ว</span>
-      </label>
-
       <div class="modal-actions">
         <button type="button" class="ghost-btn" id="backToEditBtn">ย้อนกลับไปแก้ข้อมูล</button>
-        <button type="button" id="saveTicketImageBtn">บันทึกรูปภาพ</button>
-        <button type="button" id="confirmSendBookingBtn" disabled>ยืนยันส่งคำจอง</button>
+        <button type="button" id="confirmSendBookingBtn">ยืนยันการจอง</button>
       </div>
     </div>
   </div>

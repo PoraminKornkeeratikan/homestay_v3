@@ -47,7 +47,6 @@ const DEFAULT_SETTINGS = {
   bankName: { label: "ธนาคาร", value: "ธ.กสิกรไทย" },
   bankAccountName: { label: "ชื่อบัญชี", value: "GreenStay Homestay" },
   bankAccountNumber: { label: "เลขบัญชี", value: "123-4-56789-0" },
-  promptPayId: { label: "เลขพร้อมเพย์สำหรับ QR", value: "" },
   pageUrl: { label: "ลิงก์เพจ", value: "" },
   gpsUrl: { label: "ลิงก์ GPS", value: "" },
   qrCodeUrl: { label: "QR-code ชำระเงิน", value: "" },
@@ -58,10 +57,10 @@ const DEFAULT_SETTINGS = {
   }
 };
 
-const BOOKING_FEE = 20;
+const BOOKING_FEE = 0;
 
 // ======= CREDIT SYSTEM =======
-const CREDIT_PER_BOOKING = 20;   // เครดิตที่ใช้ต่อการจอง 1 ครั้ง
+const CREDIT_PER_BOOKING = 0;   // เครดิตที่ใช้ต่อการจอง 1 ครั้ง
 const COMPANY_PASSWORD = "1234"; // รหัสผ่านหน้า company
 
 const TOPUP_PAYMENT_SETTINGS = {

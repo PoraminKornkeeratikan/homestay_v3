@@ -5,7 +5,6 @@ let mookataQty = 1;
 let selectedRoomId = "";
 let calendarDate = new Date();
 let pendingBooking = null;
-let ticketCaptured = false;
 
 const roomGrid = document.getElementById("roomGrid");
 const roomType = document.getElementById("roomType");
@@ -66,8 +65,6 @@ const acceptPolicyBtn = document.getElementById("acceptPolicyBtn");
 const bookingConfirmModal = document.getElementById("bookingConfirmModal");
 const ticketBookingCode = document.getElementById("ticketBookingCode");
 const ticketDetails = document.getElementById("ticketDetails");
-const captureDoneCheck = document.getElementById("captureDoneCheck");
-const saveTicketImageBtn = document.getElementById("saveTicketImageBtn");
 const confirmSendBookingBtn = document.getElementById("confirmSendBookingBtn");
 const backToEditBtn = document.getElementById("backToEditBtn");
 
@@ -308,6 +305,7 @@ function isRoomOpenOnDate(room, dateKey) {
 
 async function loadBootstrap() {
   showLoadingPopup("กำลังโหลดห้องพัก ราคา และข้อมูลการจอง");
+
   try {
     const result = await apiRequest({ action: "bootstrap" });
     if (!result.ok) throw new Error(result.message || "โหลดข้อมูลไม่สำเร็จ");
@@ -816,9 +814,9 @@ async function buildBookingObject() {
     throw new Error("ไฟล์สลิปต้องไม่เกิน 5MB");
   }
 
-  const allowedSlip = slipFile.type.startsWith("image/") || slipFile.type === "application/pdf";
+  const allowedSlip = slipFile.type.startsWith("image/");
   if (!allowedSlip) {
-    throw new Error("สลิปต้องเป็นไฟล์รูปภาพหรือ PDF");
+    throw new Error("สลิปต้องเป็นไฟล์รูปภาพ JPG, PNG หรือ WEBP");
   }
 
   const slipBase64 = await fileToBase64(slipFile);
@@ -851,6 +849,7 @@ async function buildBookingObject() {
     bankName: settings.bankName.value || "",
     bankAccountName: settings.bankAccountName.value || "",
     bankAccountNumber: settings.bankAccountNumber.value || "",
+    promptpayId: settings.promptPayId?.value || "",
     note: document.getElementById("note").value.trim(),
     status: "รอชำระเงิน"
   };
@@ -888,9 +887,7 @@ function renderTicket(booking) {
     </div>
   `).join("");
 
-  ticketCaptured = false;
-  captureDoneCheck.checked = false;
-  confirmSendBookingBtn.disabled = true;
+  confirmSendBookingBtn.disabled = false;
   bookingConfirmModal.classList.remove("hidden");
 }
 
@@ -909,10 +906,6 @@ async function createBooking(event) {
     submitBookingBtn.disabled = false;
     submitBookingBtn.textContent = "ส่งคำขอจอง";
   }
-}
-
-function updateConfirmButtonState() {
-  confirmSendBookingBtn.disabled = !(ticketCaptured || captureDoneCheck.checked);
 }
 
 function downloadTicketImage(booking) {
@@ -981,9 +974,7 @@ function downloadTicketImage(booking) {
   link.href = canvas.toDataURL("image/png");
   link.click();
 
-  ticketCaptured = true;
-  updateConfirmButtonState();
-  showToast("บันทึกรูปภาพแล้ว สามารถยืนยันส่งคำจองได้");
+  showToast("บันทึกข้อมูลแล้ว");
 }
 
 function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
@@ -1021,22 +1012,41 @@ async function confirmSendBooking() {
     return;
   }
 
-  if (!(ticketCaptured || captureDoneCheck.checked)) {
-    showToast("กรุณาแคปหน้าจอหรือบันทึกรูปภาพก่อนส่งคำจอง");
-    return;
-  }
-
   confirmSendBookingBtn.disabled = true;
-  confirmSendBookingBtn.textContent = "กำลังส่ง...";
+  confirmSendBookingBtn.textContent = "กำลังจองที่พัก...";
+  showLoadingPopup("กำลังจองที่พักให้");
 
   try {
+    const verified = await apiRequest({
+      action: "precheckSlip",
+      slipBase64: pendingBooking.slipBase64,
+      booking: pendingBooking
+    });
+
+    // ถ้า precheckSlip ไม่พร้อม (local mode หรือ Edge Function ยังไม่ตั้งค่า) ให้ข้ามได้
+    if (verified.ok && verified.data) {
+      pendingBooking = {
+        ...pendingBooking,
+        paymentStatus: verified.data.paymentStatus || "รอชำระเงิน",
+        status: verified.data.status || "รอชำระเงิน",
+        slipVerifyStatus: verified.data.slipVerifyStatus || "not_checked",
+        slipVerifyMessage: verified.data.slipVerifyMessage || verified.data.message || "",
+        slipVerifiedAt: verified.data.slipVerifiedAt || new Date().toISOString(),
+        slipTransferAmount: Number(verified.data.slipTransferAmount || pendingBooking.grandTotal || 0),
+        slipTransferRef: verified.data.slipTransferRef || "",
+        slipVerifyChecks: verified.data.slipVerifyChecks || null,
+        slipRawResult: verified.data.slipRawResult || null
+      };
+    }
+
+    confirmSendBookingBtn.textContent = "กำลังจองที่พัก...";
     const result = await apiRequest({ action: "create", booking: pendingBooking });
     if (!result.ok) throw new Error(result.message || "ส่งคำขอจองไม่สำเร็จ");
 
-    bookings.unshift({
+    bookings.unshift(result.data || {
       ...pendingBooking,
-      id: result.data?.id || pendingBooking.bookingCode,
-      slipUrl: result.data?.slipUrl || ""
+      id: pendingBooking.bookingCode,
+      slipUrl: ""
     });
 
     // หักเครดิต
@@ -1060,10 +1070,11 @@ async function confirmSendBooking() {
     pendingBooking = null;
   } catch (error) {
     console.error(error);
-    showToast("เกิดข้อผิดพลาด กรุณาตรวจ URL Apps Script");
+    showToast(error?.message || "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง");
   } finally {
+    hideLoadingPopup();
     confirmSendBookingBtn.disabled = false;
-    confirmSendBookingBtn.textContent = "ยืนยันส่งคำจอง";
+    confirmSendBookingBtn.textContent = "ยืนยันการจอง";
   }
 }
 
@@ -1203,10 +1214,6 @@ acceptPolicyBtn.addEventListener("click", () => {
   policyModal.classList.add("hidden");
 });
 
-captureDoneCheck.addEventListener("change", updateConfirmButtonState);
-saveTicketImageBtn.addEventListener("click", () => {
-  if (pendingBooking) downloadTicketImage(pendingBooking);
-});
 confirmSendBookingBtn.addEventListener("click", confirmSendBooking);
 backToEditBtn.addEventListener("click", () => {
   bookingConfirmModal.classList.add("hidden");

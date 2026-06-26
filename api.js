@@ -121,10 +121,10 @@ function settingObjectFromRow(row = {}) {
     bankName: { label: "ธนาคาร", value: row.bank_name || "" },
     bankAccountName: { label: "ชื่อบัญชี", value: row.bank_account_name || "" },
     bankAccountNumber: { label: "เลขบัญชี", value: row.bank_account_number || "" },
-    promptPayId: { label: "เลขพร้อมเพย์สำหรับ QR", value: row.promptpay_id || "" },
     pageUrl: { label: "ลิงก์เพจ", value: row.page_url || "" },
     gpsUrl: { label: "ลิงก์ GPS", value: row.gps_url || "" },
     qrCodeUrl: { label: "QR-code ชำระเงิน", value: row.qr_code_url || "" },
+    promptPayId: { label: "เลขพร้อมเพย์สำหรับ QR", value: row.promptpay_id || "" },
     paymentNote: { label: "หมายเหตุชำระเงิน", value: row.payment_note || "" },
     propertyPolicy: { label: "นโยบายที่พัก", value: row.property_policy || "" }
   });
@@ -251,6 +251,13 @@ function bookingRowFromObject(booking = {}, homestayId) {
     slip_file_name: booking.slipFileName || "",
     slip_mime_type: booking.slipMimeType || "",
     slip_url: booking.slipUrl || "",
+    slip_verify_status: booking.slipVerifyStatus || "not_checked",
+    slip_verify_message: booking.slipVerifyMessage || "",
+    slip_verified_at: booking.slipVerifiedAt || null,
+    slip_transfer_amount: Number(booking.slipTransferAmount || 0),
+    slip_transfer_ref: booking.slipTransferRef || "",
+    slip_verify_checks: booking.slipVerifyChecks || null,
+    slip_raw_result: booking.slipRawResult || null,
     note: booking.note || "",
     status: booking.status || "รอชำระเงิน"
   };
@@ -381,8 +388,13 @@ function buildTransferQrText(settings = {}, amount = 0) {
 }
 
 function buildPaymentQrPayload(settings = {}, amount = 0) {
-  const promptPayId = String(settings.promptPayId?.value || settings.bankAccountNumber?.value || "").trim();
-  return buildPromptPayPayload(promptPayId, amount) || buildTransferQrText(settings, amount);
+  const promptPayId = String(settings.promptPayId?.value || "").trim();
+  // ถ้ามี PromptPay ID → ใช้ EMV PromptPay format (ธนาคารสแกนได้)
+  if (promptPayId) {
+    return buildPromptPayPayload(promptPayId, amount);
+  }
+  // fallback → transfer text (ไว้แสดงข้อมูลบัญชีเท่านั้น)
+  return buildTransferQrText(settings, amount);
 }
 
 function uploadsToImageUrls(uploads = []) {
@@ -765,6 +777,10 @@ async function supabaseApiRequest(payload) {
       }
     }
 
+    if (rows?.[0]?.id && slipUrl && String(row.slip_verify_status || "not_checked") === "not_checked") {
+      queueSlipVerification(rows[0].id, homestay.slug);
+    }
+
     const booking = rows?.[0] ? await signBookingSlipUrls(bookingObjectFromRow(rows[0])) : null;
     return { ok: true, data: booking, mode: "supabase" };
   }
@@ -788,6 +804,21 @@ async function supabaseApiRequest(payload) {
       homestaySlug: homestay.slug
     });
     return { ok: true, data: result.data || null, mode: "supabase" };
+  }
+
+  if (action === "precheckSlip") {
+    try {
+      const result = await supabaseFunctionRequest("verify-slip", {
+        homestaySlug: homestay.slug,
+        slipBase64: payload.slipBase64 || "",
+        booking: payload.booking || {}
+      });
+      return { ok: true, data: result.data || null, mode: "supabase" };
+    } catch (error) {
+      // Edge Function ไม่พร้อมหรือ error → ข้ามการตรวจสลิปแล้วให้บันทึกจองต่อได้
+      console.warn("precheckSlip skipped:", error?.message);
+      return { ok: false, message: error?.message || "ตรวจสลิปไม่สำเร็จ", mode: "supabase" };
+    }
   }
 
   if (action === "delete") {
@@ -925,6 +956,13 @@ async function localApiRequest(payload) {
     return {
       ok: false,
       message: "การตรวจสลิปใช้ได้เมื่อเชื่อม Supabase และ Edge Function แล้วเท่านั้น"
+    };
+  }
+
+  if (payload.action === "precheckSlip") {
+    return {
+      ok: false,
+      message: "การตรวจสลิปอัตโนมัติใช้ได้เมื่อเชื่อม Supabase และ Edge Function แล้วเท่านั้น"
     };
   }
 

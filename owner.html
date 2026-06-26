@@ -945,9 +945,9 @@
               <input type="text" id="settingBankAccountNumber" placeholder="เช่น 123-4-56789-0" />
             </div>
             <div class="field">
-              <label>เลขพร้อมเพย์สำหรับ QR</label>
-              <input type="text" id="settingPromptPayId" placeholder="เบอร์พร้อมเพย์ / เลขบัตรประชาชน / e-Wallet" />
-              <small class="input-hint">ถ้าไม่กรอก ระบบจะลองใช้เลขบัญชีด้านบนในการสร้าง QR ตามยอดรวม</small>
+              <label>เลขพร้อมเพย์ (สำหรับ QR code)</label>
+              <input type="text" id="settingPromptPayId" placeholder="เช่น 0812345678 หรือเลขบัตรประชาชน 13 หลัก" />
+              <small class="input-hint">ลูกค้าจะสแกน QR นี้เพื่อโอนเงิน ระบบจะฝังยอดไว้ในโค้ดอัตโนมัติ</small>
             </div>
             <div class="field">
               <label>ลิงก์เพจ</label>
@@ -1153,11 +1153,11 @@
       </div>
 
       <div class="table-wrap">
-        <table>
+        <table class="booking-detail-table">
           <thead>
             <tr>
-              <th>ลูกค้า</th><th>ห้อง / วันที่</th><th>บริการเสริม</th>
-              <th>ชำระเงิน</th><th>ยอดรวม</th><th>สถานะ</th><th>จัดการ</th>
+              <th>ผู้จอง</th><th>การเข้าพัก</th><th>บริการเสริม</th>
+              <th>ชำระเงิน / สลิป</th><th>ยอดรวม</th><th>สถานะ</th><th>จัดการ</th>
             </tr>
           </thead>
           <tbody id="bookingTable">

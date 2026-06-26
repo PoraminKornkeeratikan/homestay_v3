@@ -304,7 +304,7 @@ async function saveSettings(event) {
     bankName: { label: "ธนาคาร", value: settingBankName.value.trim() },
     bankAccountName: { label: "ชื่อบัญชี", value: settingBankAccountName.value.trim() },
     bankAccountNumber: { label: "เลขบัญชี", value: settingBankAccountNumber.value.trim() },
-    promptPayId: { label: "เลขพร้อมเพย์สำหรับ QR", value: settingPromptPayId?.value.trim() || "" },
+    promptPayId: { label: "เลขพร้อมเพย์", value: settingPromptPayId?.value.trim() || "" },
     pageUrl: { label: "ลิงก์เพจ", value: settingPageUrl.value.trim() },
     gpsUrl: { label: "ลิงก์ GPS", value: settingGpsUrl.value.trim() },
     paymentNote: { label: "หมายเหตุชำระเงิน", value: settingPaymentNote?.value.trim() || "" },
@@ -943,7 +943,7 @@ function renderDateDetails(dateKey) {
         </div>
 
         ${booking.note ? `<p class="date-note">หมายเหตุ: ${escapeHtml(booking.note)}</p>` : ""}
-        ${booking.slipUrl ? `<a class="slip-link" href="${escapeHtml(booking.slipUrl)}" target="_blank" rel="noopener">ดูสลิปการโอน</a>` : ""}
+        ${booking.slipUrl ? `<button type="button" class="slip-link" data-slip-url="${escapeHtml(booking.slipUrl)}" onclick="openSlipImagePopup(this.dataset.slipUrl)">สลิปการโอน</button>` : ""}
       </article>
     `;
   }).join("");
@@ -967,7 +967,6 @@ function renderSlipCheck(label, check) {
 
 function renderSlipVerifyStatus(booking = {}) {
   const status = String(booking.slipVerifyStatus || "not_checked");
-  const message = String(booking.slipVerifyMessage || "");
   const checks = booking.slipVerifyChecks || {};
 
   if (!booking.slipUrl) {
@@ -981,19 +980,67 @@ function renderSlipVerifyStatus(booking = {}) {
   if (status === "error") {
     return `
       <small class="slip-verify failed">ตรวจสลิปไม่ได้</small>
-      ${message ? `<small>${escapeHtml(message)}</small>` : ""}
     `;
   }
 
   return `
     <div class="slip-checklist ${status === "passed" ? "passed" : "failed"}">
-      ${renderSlipCheck("เลขบัญชี", checks.accountNumber)}
+      ${renderSlipCheck("เลขบัญชี/พร้อมเพย์", checks.accountNumber)}
       ${renderSlipCheck("ชื่อบัญชี", checks.accountName)}
       ${renderSlipCheck("เวลา", checks.transferTime)}
       ${renderSlipCheck("จำนวนเงิน", checks.amount)}
     </div>
-    ${message ? `<small>${escapeHtml(message)}</small>` : ""}
   `;
+}
+
+function renderPaymentSlipPreview(booking = {}) {
+  const slipUrl = String(booking.slipUrl || "").trim();
+
+  if (!slipUrl) {
+    return `<div class="owner-slip-empty">ยังไม่มีสลิป</div>`;
+  }
+
+  return `
+    <button type="button" class="owner-slip-preview" data-slip-url="${escapeHtml(slipUrl)}" onclick="openSlipImagePopup(this.dataset.slipUrl)">
+      <img src="${escapeHtml(slipUrl)}" alt="สลิปการโอนของลูกค้า" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentElement.classList.add('is-broken'); this.remove();" />
+    </button>
+  `;
+}
+
+function ensureSlipImagePopup() {
+  let modal = document.getElementById("slipImagePopup");
+  if (modal) return modal;
+
+  modal = document.createElement("div");
+  modal.id = "slipImagePopup";
+  modal.className = "modal-overlay slip-image-popup hidden";
+  modal.innerHTML = `
+    <div class="slip-image-popup-card">
+      <button type="button" class="modal-close-btn slip-image-close" onclick="closeSlipImagePopup()" aria-label="ปิด">✕</button>
+      <img id="slipImagePopupImg" alt="สลิปการโอนของลูกค้า" />
+    </div>
+  `;
+  modal.addEventListener("click", event => {
+    if (event.target.id === "slipImagePopup") closeSlipImagePopup();
+  });
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function openSlipImagePopup(url) {
+  const modal = ensureSlipImagePopup();
+  const img = document.getElementById("slipImagePopupImg");
+  if (img) img.src = url;
+  modal.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+}
+
+function closeSlipImagePopup() {
+  const modal = document.getElementById("slipImagePopup");
+  if (modal) modal.classList.add("hidden");
+  const img = document.getElementById("slipImagePopupImg");
+  if (img) img.removeAttribute("src");
+  document.body.classList.remove("modal-open");
 }
 
 function autoVerifyPendingSlips() {
@@ -1050,6 +1097,12 @@ function renderBookingTable() {
     const extraBedQty = Number(booking.extraBedQty || 0);
     const addonLines = [];
     const slipVerifyHtml = renderSlipVerifyStatus(booking);
+    const slipPreviewHtml = renderPaymentSlipPreview(booking);
+    const guestCount = Number(booking.guestCount || 1);
+    const grandTotal = Number(booking.grandTotal || booking.total || 0);
+    const roomTotal = Number(booking.roomTotal || 0);
+    const addonTotal = Number(booking.addonTotal || 0);
+    const bookingFee = Number(booking.bookingFee || 0);
     if (mookataQty > 0) {
       addonLines.push(`หมูกระทะ ${mookataQty} ชุด × ${formatMoney(booking.mookataPrice)}`);
     }
@@ -1059,33 +1112,55 @@ function renderBookingTable() {
     }
 
     return `
-      <tr>
-        <td>
-          <b>${escapeHtml(booking.name)}</b>
-          <small>เลขรายการจอง: ${escapeHtml(booking.bookingCode || booking.id || "-")}</small>
-          <small>${escapeHtml(booking.phone)}</small>
-          ${booking.email ? `<small>${escapeHtml(booking.email)}</small>` : ""}
-          ${booking.note ? `<small>หมายเหตุ: ${escapeHtml(booking.note)}</small>` : ""}
+      <tr class="booking-detail-row">
+        <td class="booking-guest-cell">
+          <div class="booking-primary">
+            <b>${escapeHtml(booking.name || "-")}</b>
+            <span class="booking-code">${escapeHtml(booking.bookingCode || booking.id || "-")}</span>
+          </div>
+          <div class="booking-contact-list">
+            <span>${escapeHtml(booking.phone || "-")}</span>
+            ${booking.email ? `<span>${escapeHtml(booking.email)}</span>` : ""}
+          </div>
+          ${booking.note ? `<div class="booking-note-box">${escapeHtml(booking.note)}</div>` : ""}
         </td>
-        <td>
-          <b>${escapeHtml(booking.roomName)}</b>
-          <small>${escapeHtml(booking.checkIn)} → ${escapeHtml(booking.checkOut)}</small>
-          <small>${booking.nights} คืน • ค่าห้อง ${formatMoney(booking.roomTotal || 0)}</small>
-          <small>ค่าจอง ${formatMoney(booking.bookingFee || 0)}</small>
+        <td class="booking-stay-cell">
+          <div class="booking-room-title">${escapeHtml(booking.roomName || "-")}</div>
+          <div class="booking-date-range">
+            <span>${escapeHtml(booking.checkIn || "-")}</span>
+            <i>→</i>
+            <span>${escapeHtml(booking.checkOut || "-")}</span>
+          </div>
+          <div class="booking-meta-grid">
+            <span>${Number(booking.nights || 0)} คืน</span>
+            <span>${guestCount} คน</span>
+          </div>
+          <div class="booking-cost-lines">
+            <span><em>ค่าห้อง</em><b>${formatMoney(roomTotal)}</b></span>
+            <span><em>ค่าจอง</em><b>${formatMoney(bookingFee)}</b></span>
+          </div>
         </td>
-        <td>
-          ${addonLines.length ? addonLines.map(line => `<small>${escapeHtml(line)}</small>`).join("") : `<small>ไม่มีบริการเสริม</small>`}
-          <small>รวมบริการเสริม ${formatMoney(booking.addonTotal || 0)}</small>
+        <td class="booking-addon-cell">
+          <div class="booking-addon-tags">
+            ${addonLines.length ? addonLines.map(line => `<span>${escapeHtml(line)}</span>`).join("") : `<span class="muted">ไม่มีบริการเสริม</span>`}
+          </div>
+          <div class="booking-addon-total">รวม ${formatMoney(addonTotal)}</div>
         </td>
-        <td>
-          <b>${escapeHtml(booking.paymentStatus || "รอชำระเงิน")}</b>
-          <small>${escapeHtml(booking.paymentMethod || "โอนผ่านบัญชีธนาคาร")}</small>
-          ${booking.slipUrl ? `<small><a href="${escapeHtml(booking.slipUrl)}" target="_blank" rel="noopener">ดูสลิปการโอน</a></small>` : `<small>ยังไม่มีสลิป</small>`}
-          ${slipVerifyHtml}
+        <td class="booking-payment-cell">
+          <div class="owner-payment-cell">
+            <b>${escapeHtml(booking.paymentStatus || "รอชำระเงิน")}</b>
+            ${slipPreviewHtml}
+            ${slipVerifyHtml}
+          </div>
         </td>
-        <td><b>${formatMoney(booking.grandTotal || booking.total || 0)}</b></td>
-        <td><span class="status ${statusClass(booking.status)}">${escapeHtml(booking.status)}</span></td>
-        <td>
+        <td class="booking-total-cell">
+          <b>${formatMoney(grandTotal)}</b>
+          <small>ยอดชำระทั้งหมด</small>
+        </td>
+        <td class="booking-status-cell">
+          <span class="status ${statusClass(booking.status)}">${escapeHtml(booking.status || "-")}</span>
+        </td>
+        <td class="booking-actions-cell">
           <div class="action-row">
             <button onclick="updateStatus('${booking.id}', 'ยืนยันแล้ว')">ยืนยัน</button>
             <button onclick="updateStatus('${booking.id}', 'ยกเลิก')">ยกเลิก</button>
@@ -1208,6 +1283,12 @@ if (roomClosePrevBtn && roomCloseNextBtn) {
 }
 
 document.addEventListener("keydown", event => {
+  const slipImagePopup = document.getElementById("slipImagePopup");
+  if (event.key === "Escape" && slipImagePopup && !slipImagePopup.classList.contains("hidden")) {
+    closeSlipImagePopup();
+    return;
+  }
+
   if (event.key === "Escape" && roomCloseModal && !roomCloseModal.classList.contains("hidden")) {
     cancelRoomCloseModal();
   }
