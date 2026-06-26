@@ -90,6 +90,28 @@ async function supabaseRequest(path, options = {}) {
   return data;
 }
 
+async function supabaseFunctionRequest(functionName, payload = {}) {
+  const url = `${supabaseBaseUrl()}/functions/v1/${functionName}`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!response.ok || data?.ok === false) {
+    throw new Error(data?.message || data?.error?.message || response.statusText || "Function request failed");
+  }
+
+  return data;
+}
+
 function settingObjectFromRow(row = {}) {
   return normalizeSettings({
     siteName: { label: "ชื่อเว็บไซต์", value: row.site_name || DEFAULT_SETTINGS.siteName.value },
@@ -187,6 +209,12 @@ function bookingObjectFromRow(row = {}) {
     slipFileName: row.slip_file_name || "",
     slipMimeType: row.slip_mime_type || "",
     slipUrl: row.slip_url || "",
+    slipVerifyStatus: row.slip_verify_status || "not_checked",
+    slipVerifyMessage: row.slip_verify_message || "",
+    slipVerifiedAt: row.slip_verified_at || "",
+    slipTransferAmount: Number(row.slip_transfer_amount || 0),
+    slipTransferRef: row.slip_transfer_ref || "",
+    slipVerifyChecks: row.slip_verify_checks || null,
     note: row.note || "",
     status: row.status || "",
     createdAt: row.created_at || ""
@@ -423,7 +451,11 @@ async function supabaseSignedFileUrl(bucket, path, expiresIn = 60 * 60 * 24 * 30
   const text = await response.text();
   const data = text ? JSON.parse(text) : null;
   if (!response.ok) return "";
-  return data?.signedURL ? `${supabaseBaseUrl()}${data.signedURL}` : "";
+  if (!data?.signedURL) return "";
+  const signedPath = String(data.signedURL);
+  return signedPath.startsWith("/storage/v1/")
+    ? `${supabaseBaseUrl()}${signedPath}`
+    : `${supabaseBaseUrl()}/storage/v1${signedPath}`;
 }
 
 async function uploadPublicAsset(upload, path) {
@@ -507,6 +539,16 @@ async function signBookingSlipUrls(bookings = []) {
   }));
 
   return Array.isArray(bookings) ? signedItems : signedItems[0];
+}
+
+function queueSlipVerification(bookingId, homestaySlug) {
+  if (!bookingId || !isSupabaseReady) return;
+  supabaseFunctionRequest("verify-slip", {
+    bookingId,
+    homestaySlug
+  }).catch(error => {
+    console.warn("Auto slip verification failed", error);
+  });
 }
 
 function normalizeGalleryImages(room = {}) {
@@ -622,6 +664,10 @@ async function supabaseApiRequest(payload) {
   if (action === "lookupBooking") {
     const code = encodeURIComponent(String(payload.bookingCode || "").trim());
     const rows = await supabaseRequest(`bookings?homestay_id=eq.${homestayId}&booking_code=eq.${code}&select=*&limit=1`);
+    if (rows?.[0]?.id && rows?.[0]?.slip_url) {
+      queueSlipVerification(rows[0].id, homestay.slug);
+    }
+
     const booking = rows?.[0] ? await signBookingSlipUrls(bookingObjectFromRow(rows[0])) : null;
     return { ok: true, data: booking, mode: "supabase" };
   }
@@ -734,6 +780,14 @@ async function supabaseApiRequest(payload) {
       body: JSON.stringify(next)
     });
     return { ok: true, mode: "supabase" };
+  }
+
+  if (action === "verifySlip") {
+    const result = await supabaseFunctionRequest("verify-slip", {
+      bookingId: payload.id,
+      homestaySlug: homestay.slug
+    });
+    return { ok: true, data: result.data || null, mode: "supabase" };
   }
 
   if (action === "delete") {
@@ -865,6 +919,13 @@ async function localApiRequest(payload) {
     );
     localSaveBookings(bookings);
     return { ok: true, mode: "local" };
+  }
+
+  if (payload.action === "verifySlip") {
+    return {
+      ok: false,
+      message: "การตรวจสลิปใช้ได้เมื่อเชื่อม Supabase และ Edge Function แล้วเท่านั้น"
+    };
   }
 
   if (payload.action === "delete") {

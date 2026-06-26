@@ -160,6 +160,14 @@ create table if not exists public.bookings (
   slip_file_name text,
   slip_mime_type text,
   slip_url text,
+  slip_verify_status text not null default 'not_checked'
+    check (slip_verify_status in ('not_checked', 'passed', 'failed', 'error')),
+  slip_verify_message text,
+  slip_verified_at timestamptz,
+  slip_transfer_amount numeric(12,2),
+  slip_transfer_ref text,
+  slip_verify_checks jsonb,
+  slip_raw_result jsonb,
 
   note text,
   status text not null default 'รอชำระเงิน',

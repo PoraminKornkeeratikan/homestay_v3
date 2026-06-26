@@ -48,6 +48,7 @@ const downloadQrBtn = document.getElementById("downloadQrBtn");
 const pageLinkBtn = document.getElementById("pageLinkBtn");
 const gpsLinkBtn = document.getElementById("gpsLinkBtn");
 const copyAccountBtn = document.getElementById("copyAccountBtn");
+const paymentHelpText = document.getElementById("paymentHelpText");
 const transferSlip = document.getElementById("transferSlip");
 const slipDropzone = document.getElementById("slipDropzone");
 const slipFileName = document.getElementById("slipFileName");
@@ -567,6 +568,11 @@ function renderSettings() {
   bankNameText.textContent = settings.bankName.value || "-";
   bankAccountNameText.textContent = settings.bankAccountName.value || "-";
   bankAccountNumberText.textContent = settings.bankAccountNumber.value || "-";
+  if (paymentHelpText) {
+    paymentHelpText.innerHTML = formatMultiline(
+      settings.paymentNote?.value || "หลังโอนเงิน: กรุณาแนบสลิปการโอนเงินก่อนส่งคำขอจอง หากไม่แนบสลิป ระบบจะไม่ให้ส่งจอง"
+    );
+  }
 
   setupHeroLink(pageLinkBtn, settings.pageUrl?.value);
   setupHeroLink(gpsLinkBtn, settings.gpsUrl?.value);

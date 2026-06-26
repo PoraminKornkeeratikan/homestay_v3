@@ -48,9 +48,7 @@
     <section id="rooms" class="section-head">
       <div>
         <h3>ห้องพัก</h3>
-        <p>ข้อมูลห้องและราคาดึงจาก Google Sheet</p>
       </div>
-      <div class="sync-status" id="syncStatus">กำลังโหลดข้อมูล...</div>
     </section>
 
     <div class="room-grid" id="roomGrid"></div>
@@ -322,18 +320,5 @@
   <script src="app-config.js"></script>
   <script src="api.js"></script>
   <script src="customer.js"></script>
-  <script>
-    // ตรวจสอบสถานะระบบทันทีที่โหลดหน้า
-    if (!isSystemActive()) {
-      document.body.innerHTML = `
-        <div class="system-inactive-fullpage">
-          <div class="inactive-card">
-            <div class="inactive-icon">🔒</div>
-            <h2>หยุดใช้งานชั่วคราวค่ะ</h2>
-            <p>ขออภัยในความไม่สะดวก<br>ขณะนี้ระบบจองห้องพักหยุดให้บริการชั่วคราว<br>กรุณาติดต่อเจ้าหน้าที่เพื่อสอบถามข้อมูลเพิ่มเติม</p>
-          </div>
-        </div>`;
-    }
-  </script>
 </body>
 </html>

@@ -209,8 +209,8 @@ function statusClass(status) {
   return "pending";
 }
 
-async function loadDashboard() {
-  showLoadingPopup("กำลังโหลดรายการจอง ห้องพัก และการตั้งค่า");
+async function loadDashboard(silent = false) {
+  if (!silent) showLoadingPopup("กำลังโหลดรายการจอง ห้องพัก และการตั้งค่า");
   try {
     const result = await apiRequest({ action: "bootstrap" });
     if (!result.ok) throw new Error(result.message || "โหลดข้อมูลไม่สำเร็จ");
@@ -231,11 +231,12 @@ async function loadDashboard() {
     renderDateDetails(adminSelectedDateKey);
     renderBookingTable();
     renderPrepSections();
+    autoVerifyPendingSlips();
   } catch (error) {
     console.error(error);
     showToast("โหลดข้อมูลไม่สำเร็จ ตรวจ URL / สิทธิ์ Web App");
   } finally {
-    setTimeout(hideLoadingPopup, 350);
+    if (!silent) setTimeout(hideLoadingPopup, 350);
   }
 }
 
@@ -306,6 +307,7 @@ async function saveSettings(event) {
     promptPayId: { label: "เลขพร้อมเพย์สำหรับ QR", value: settingPromptPayId?.value.trim() || "" },
     pageUrl: { label: "ลิงก์เพจ", value: settingPageUrl.value.trim() },
     gpsUrl: { label: "ลิงก์ GPS", value: settingGpsUrl.value.trim() },
+    paymentNote: { label: "หมายเหตุชำระเงิน", value: settingPaymentNote?.value.trim() || "" },
     propertyPolicy: { label: "นโยบายที่พัก", value: settingPropertyPolicy.value.trim() }
   };
 
@@ -433,7 +435,7 @@ async function createRoom(event) {
     showToast("เพิ่มห้องพักแล้ว");
   } catch (error) {
     console.error(error);
-    showToast("เพิ่มห้องพักไม่สำเร็จ");
+    showToast(error.message || "เพิ่มห้องพักไม่สำเร็จ");
   }
 }
 
@@ -949,6 +951,68 @@ function renderDateDetails(dateKey) {
   adminDateDetailList.innerHTML = availableHtml + bookingHtml;
 }
 
+function renderSlipCheck(label, check) {
+  const ok = check?.ok === true;
+  const title = check?.actual && check?.actual !== "-"
+    ? ` title="พบ: ${escapeHtml(check.actual)}"`
+    : "";
+
+  return `
+    <div class="slip-check-row"${title}>
+      <span>${escapeHtml(label)}</span>
+      <b class="${ok ? "ok" : "bad"}">${ok ? "✓" : "✕"}</b>
+    </div>
+  `;
+}
+
+function renderSlipVerifyStatus(booking = {}) {
+  const status = String(booking.slipVerifyStatus || "not_checked");
+  const message = String(booking.slipVerifyMessage || "");
+  const checks = booking.slipVerifyChecks || {};
+
+  if (!booking.slipUrl) {
+    return `<small class="slip-verify muted">ยังไม่มีสลิปให้ตรวจ</small>`;
+  }
+
+  if (status === "not_checked") {
+    return `<small class="slip-verify pending">กำลังรอตรวจอัตโนมัติ</small>`;
+  }
+
+  if (status === "error") {
+    return `
+      <small class="slip-verify failed">ตรวจสลิปไม่ได้</small>
+      ${message ? `<small>${escapeHtml(message)}</small>` : ""}
+    `;
+  }
+
+  return `
+    <div class="slip-checklist ${status === "passed" ? "passed" : "failed"}">
+      ${renderSlipCheck("เลขบัญชี", checks.accountNumber)}
+      ${renderSlipCheck("ชื่อบัญชี", checks.accountName)}
+      ${renderSlipCheck("เวลา", checks.transferTime)}
+      ${renderSlipCheck("จำนวนเงิน", checks.amount)}
+    </div>
+    ${message ? `<small>${escapeHtml(message)}</small>` : ""}
+  `;
+}
+
+function autoVerifyPendingSlips() {
+  const pending = cachedBookings
+    .filter(booking => booking.slipUrl && String(booking.slipVerifyStatus || "not_checked") === "not_checked")
+    .slice(0, 5);
+
+  if (!pending.length) return;
+
+  Promise.allSettled(pending.map(booking => apiRequest({ action: "verifySlip", id: booking.id })))
+    .then(results => {
+      if (results.some(result => result.status === "fulfilled")) {
+        return loadDashboard(true);
+      }
+      return null;
+    })
+    .catch(error => console.warn("Auto verify pending slips failed", error));
+}
+
 function renderBookingTable() {
   const keyword = (searchBooking?.value || "").toLowerCase();
   const filter = statusFilter?.value || "all";
@@ -985,7 +1049,7 @@ function renderBookingTable() {
     const mookataQty = Number(booking.mookataQty || 0);
     const extraBedQty = Number(booking.extraBedQty || 0);
     const addonLines = [];
-
+    const slipVerifyHtml = renderSlipVerifyStatus(booking);
     if (mookataQty > 0) {
       addonLines.push(`หมูกระทะ ${mookataQty} ชุด × ${formatMoney(booking.mookataPrice)}`);
     }
@@ -1017,12 +1081,12 @@ function renderBookingTable() {
           <b>${escapeHtml(booking.paymentStatus || "รอชำระเงิน")}</b>
           <small>${escapeHtml(booking.paymentMethod || "โอนผ่านบัญชีธนาคาร")}</small>
           ${booking.slipUrl ? `<small><a href="${escapeHtml(booking.slipUrl)}" target="_blank" rel="noopener">ดูสลิปการโอน</a></small>` : `<small>ยังไม่มีสลิป</small>`}
+          ${slipVerifyHtml}
         </td>
         <td><b>${formatMoney(booking.grandTotal || booking.total || 0)}</b></td>
         <td><span class="status ${statusClass(booking.status)}">${escapeHtml(booking.status)}</span></td>
         <td>
           <div class="action-row">
-            <button onclick="updateStatus('${booking.id}', 'ชำระแล้ว')">ชำระแล้ว</button>
             <button onclick="updateStatus('${booking.id}', 'ยืนยันแล้ว')">ยืนยัน</button>
             <button onclick="updateStatus('${booking.id}', 'ยกเลิก')">ยกเลิก</button>
           </div>
@@ -1040,6 +1104,24 @@ async function updateStatus(id, status) {
   } catch (error) {
     console.error(error);
     showToast("เปลี่ยนสถานะไม่สำเร็จ");
+  }
+}
+
+async function verifySlip(id) {
+  if (!id) return;
+
+  try {
+    showLoadingPopup("กำลังตรวจสอบสลิปกับ EasySlip");
+    const result = await apiRequest({ action: "verifySlip", id });
+    await loadDashboard();
+    closeLoadingPopup();
+
+    const data = result?.data || {};
+    showToast(data.passed ? "ตรวจสลิปผ่าน" : (data.message || "ตรวจสลิปไม่ผ่าน"));
+  } catch (error) {
+    console.error(error);
+    closeLoadingPopup();
+    showToast(error.message || "ตรวจสลิปไม่สำเร็จ");
   }
 }
 

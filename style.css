@@ -1162,6 +1162,82 @@ td small {
   color: var(--danger);
 }
 
+.slip-verify {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 6px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+.slip-verify.pending {
+  background: #fff6dc;
+  color: var(--warning);
+}
+
+.slip-verify.passed {
+  background: var(--mint);
+  color: var(--green-800);
+}
+
+.slip-verify.failed {
+  background: #ffe8e8;
+  color: var(--danger);
+}
+
+.slip-verify.muted {
+  background: #f3f4f6;
+  color: var(--muted);
+}
+
+.slip-checklist {
+  display: grid;
+  gap: 3px;
+  width: fit-content;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #fff8df;
+  border: 1px solid rgba(234, 179, 8, .22);
+}
+
+.slip-checklist.passed {
+  background: #e9fbf1;
+  border-color: rgba(22, 163, 74, .22);
+}
+
+.slip-check-row {
+  display: grid;
+  grid-template-columns: minmax(70px, max-content) 22px;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--green-900);
+}
+
+.slip-check-row b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #fff;
+}
+
+.slip-check-row b.ok {
+  background: #22c55e;
+}
+
+.slip-check-row b.bad {
+  background: #ef4444;
+}
+
 .action-row {
   display: flex;
   gap: 8px;
