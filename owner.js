@@ -52,6 +52,19 @@ const settingPropertyPolicy = document.getElementById("settingPropertyPolicy");
 const settingPaymentNote = document.getElementById("settingPaymentNote");
 const settingAddonList = document.getElementById("settingAddonList");
 const addSettingAddonBtn = document.getElementById("addSettingAddonBtn");
+const settingOwnerPassword = document.getElementById("settingOwnerPassword");
+const settingOwnerPasswordConfirm = document.getElementById("settingOwnerPasswordConfirm");
+const saveOwnerPasswordBtn = document.getElementById("saveOwnerPasswordBtn");
+const settingHeroTextPill = document.getElementById("settingHeroTextPill");
+const settingHeroTextTitle = document.getElementById("settingHeroTextTitle");
+const settingHeroTextBody = document.getElementById("settingHeroTextBody");
+const settingHeroTextImageFile = document.getElementById("settingHeroTextImageFile");
+const settingHeroTextImageName = document.getElementById("settingHeroTextImageName");
+const settingHeroCardEyebrow = document.getElementById("settingHeroCardEyebrow");
+const settingHeroCardTitle = document.getElementById("settingHeroCardTitle");
+const settingHeroCardSubtitle = document.getElementById("settingHeroCardSubtitle");
+const settingHeroCardImageFile = document.getElementById("settingHeroCardImageFile");
+const settingHeroCardImageName = document.getElementById("settingHeroCardImageName");
 
 const roomForm = document.getElementById("roomForm");
 const roomNameInput = document.getElementById("roomNameInput");
@@ -313,6 +326,17 @@ function renderSettingsForm() {
   clearImagePreview(settingLogoPreview);
   settingPropertyPolicy.value = settings.propertyPolicy?.value || "";
   if (settingPaymentNote) settingPaymentNote.value = settings.paymentNote.value || "";
+  const hero = normalizeHeroContent(settings.heroContent || {});
+  if (settingHeroTextPill) settingHeroTextPill.value = hero.textPill || "";
+  if (settingHeroTextTitle) settingHeroTextTitle.value = hero.textTitle || "";
+  if (settingHeroTextBody) settingHeroTextBody.value = hero.textBody || "";
+  if (settingHeroCardEyebrow) settingHeroCardEyebrow.value = hero.cardEyebrow || "";
+  if (settingHeroCardTitle) settingHeroCardTitle.value = hero.cardTitle || "";
+  if (settingHeroCardSubtitle) settingHeroCardSubtitle.value = hero.cardSubtitle || "";
+  if (settingHeroTextImageFile) settingHeroTextImageFile.value = "";
+  if (settingHeroCardImageFile) settingHeroCardImageFile.value = "";
+  if (settingHeroTextImageName) settingHeroTextImageName.textContent = hero.textImage ? "กำลังใช้รูปที่บันทึกไว้" : "ยังไม่ได้เลือกรูป";
+  if (settingHeroCardImageName) settingHeroCardImageName.textContent = hero.cardImage ? "กำลังใช้รูปที่บันทึกไว้" : "ยังไม่ได้เลือกรูป";
 }
 
 function renderAddonSettingsForm() {
@@ -398,6 +422,8 @@ async function saveSettings(event) {
   event.preventDefault();
 
   const logoFile = settingLogoFileInput.files && settingLogoFileInput.files[0];
+  const heroTextImageFile = settingHeroTextImageFile?.files && settingHeroTextImageFile.files[0];
+  const heroCardImageFile = settingHeroCardImageFile?.files && settingHeroCardImageFile.files[0];
 
   let logoSetting = {
     label: "โลโก้",
@@ -428,6 +454,42 @@ async function saveSettings(event) {
     };
   }
 
+  const buildHeroImageSetting = async (file, currentValue, label) => {
+    if (!file) return currentValue || "";
+    const maxHeroImageSize = 5 * 1024 * 1024;
+    if (file.size > maxHeroImageSize) {
+      showToast("Hero image must be smaller than 5MB");
+      return null;
+    }
+    if (!file.type.startsWith("image/")) {
+      showToast("Please upload image files only");
+      return null;
+    }
+    const base64 = await fileToBase64(file);
+    return {
+      label,
+      fileName: file.name,
+      mimeType: file.type,
+      base64
+    };
+  };
+
+  const currentHero = normalizeHeroContent(settings.heroContent || {});
+  const nextHeroTextImage = await buildHeroImageSetting(heroTextImageFile, currentHero.textImage, "Hero text image");
+  const nextHeroCardImage = await buildHeroImageSetting(heroCardImageFile, currentHero.cardImage, "Hero card image");
+  if (nextHeroTextImage === null || nextHeroCardImage === null) return;
+  const heroContent = {
+    label: "Hero content",
+    textPill: settingHeroTextPill?.value.trim() || currentHero.textPill,
+    textTitle: settingHeroTextTitle?.value.trim() || currentHero.textTitle,
+    textBody: settingHeroTextBody?.value.trim() || currentHero.textBody,
+    textImage: nextHeroTextImage,
+    cardEyebrow: settingHeroCardEyebrow?.value.trim() || currentHero.cardEyebrow,
+    cardTitle: settingHeroCardTitle?.value.trim() || currentHero.cardTitle,
+    cardSubtitle: settingHeroCardSubtitle?.value.trim() || currentHero.cardSubtitle,
+    cardImage: nextHeroCardImage
+  };
+
   const addonItems = getAddonSettingsFromForm();
   const mookataAddon = addonItems.find(item => item.id === "mookata") || { name: "หมูกระทะ", price: 0 };
   const extraBedAddon = addonItems.find(item => item.id === "extra_bed") || { name: "เตียงเสริม", price: 0 };
@@ -443,6 +505,7 @@ async function saveSettings(event) {
     bankAccountNumber: { label: "เลขบัญชี", value: settingBankAccountNumber.value.trim() },
     promptPayId: { label: "เลขพร้อมเพย์", value: settingPromptPayId?.value.trim() || "" },
     bookingFee: settings.bookingFee || DEFAULT_SETTINGS.bookingFee,
+    heroContent,
     pageUrl: { label: "ลิงก์เพจ", value: settingPageUrl.value.trim() },
     gpsUrl: { label: "ลิงก์ GPS", value: settingGpsUrl.value.trim() },
     paymentNote: { label: "หมายเหตุชำระเงิน", value: settingPaymentNote?.value.trim() || "" },
@@ -459,6 +522,34 @@ async function saveSettings(event) {
   } catch (error) {
     console.error(error);
     showToast("บันทึกการตั้งค่าไม่สำเร็จ");
+  }
+}
+
+async function saveOwnerPassword() {
+  const ownerPassword = String(settingOwnerPassword?.value || "").trim();
+  const confirmPassword = String(settingOwnerPasswordConfirm?.value || "").trim();
+
+  if (!ownerPassword) {
+    showToast("Please enter new Owner password");
+    settingOwnerPassword?.focus();
+    return;
+  }
+
+  if (ownerPassword !== confirmPassword) {
+    showToast("Owner password confirmation does not match");
+    settingOwnerPasswordConfirm?.focus();
+    return;
+  }
+
+  try {
+    const result = await apiRequest({ action: "ownerUpdatePassword", ownerPassword });
+    if (!result.ok) throw new Error(result.message || "Save Owner password failed");
+    if (settingOwnerPassword) settingOwnerPassword.value = "";
+    if (settingOwnerPasswordConfirm) settingOwnerPasswordConfirm.value = "";
+    showToast("Owner password saved");
+  } catch (error) {
+    console.error(error);
+    showToast(error.message || "Save Owner password failed");
   }
 }
 
@@ -487,6 +578,11 @@ function updateLogoChoiceState() {
   const file = settingLogoFileInput.files && settingLogoFileInput.files[0];
   settingLogoFileName.textContent = file ? file.name : (settings.logoUrl?.value ? "กำลังใช้โลโก้ที่บันทึกไว้" : "ยังไม่ได้เลือกไฟล์");
   updateImagePreview(settingLogoFileInput, settingLogoPreview);
+}
+
+function updateHeroImageChoiceState(input, label, currentValue) {
+  const file = input?.files && input.files[0];
+  if (label) label.textContent = file ? file.name : (currentValue ? "กำลังใช้รูปที่บันทึกไว้" : "ยังไม่ได้เลือกรูป");
 }
 
 function clearImagePreview(preview) {
@@ -1424,6 +1520,8 @@ settingSiteName.addEventListener("input", () => {
   document.title = suffix ? `${previewName} - ${suffix}` : previewName;
 });
 settingLogoFileInput.addEventListener("change", updateLogoChoiceState);
+settingHeroTextImageFile?.addEventListener("change", () => updateHeroImageChoiceState(settingHeroTextImageFile, settingHeroTextImageName, settings.heroContent?.textImage));
+settingHeroCardImageFile?.addEventListener("change", () => updateHeroImageChoiceState(settingHeroCardImageFile, settingHeroCardImageName, settings.heroContent?.cardImage));
 addSettingAddonBtn?.addEventListener("click", addSettingAddonRow);
 settingMookataPrice?.addEventListener("input", () => syncLegacyAddonPrice("mookata", settingMookataPrice.value));
 settingExtraBedPrice?.addEventListener("input", () => syncLegacyAddonPrice("extra_bed", settingExtraBedPrice.value));
@@ -1776,15 +1874,21 @@ function updateHeaderVisibility() {
 }
 
 loginBtn.addEventListener("click", async () => {
-  if (ownerPassword.value === OWNER_PASSWORD) {
+  try {
+    const result = await apiRequest({ action: "ownerLogin", password: ownerPassword.value });
+    if (!result.ok) {
+      showToast("Incorrect password");
+      return;
+    }
     ownerLoginBox.classList.add("hidden");
     ownerDashboard.classList.remove("hidden");
     updateHeaderVisibility();
     await loadDashboard();
     renderCreditCard(); renderHeaderCredit();
-    showToast("เข้าสู่ระบบสำเร็จ");
-  } else {
-    showToast("รหัสผ่านไม่ถูกต้อง");
+    showToast("Login successful");
+  } catch (error) {
+    console.error(error);
+    showToast("Incorrect password");
   }
 });
 
@@ -1798,6 +1902,19 @@ logoutBtn.addEventListener("click", () => {
 
 refreshBtn.addEventListener("click", loadDashboard);
 settingsForm.addEventListener("submit", saveSettings);
+if (saveOwnerPasswordBtn) saveOwnerPasswordBtn.addEventListener("click", saveOwnerPassword);
+settingOwnerPassword?.addEventListener("keydown", event => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    saveOwnerPassword();
+  }
+});
+settingOwnerPasswordConfirm?.addEventListener("keydown", event => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    saveOwnerPassword();
+  }
+});
 roomForm.addEventListener("submit", createRoom);
 searchBooking.addEventListener("input", renderBookingTable);
 statusFilter.addEventListener("change", renderBookingTable);

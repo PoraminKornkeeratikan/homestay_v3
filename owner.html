@@ -516,7 +516,35 @@
 
     /* ===== SECTION PANELS (ตั้งค่า / ห้องพัก hidden by default) ===== */
     .settings-panel, .rooms-panel { display: none; }
-    .settings-panel.visible, .rooms-panel.visible { display: block; }
+    .settings-panel.visible, .rooms-panel.visible {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      display: grid !important;
+      place-items: center;
+      padding: clamp(14px, 3vw, 28px);
+      background: rgba(15, 61, 46, 0.48);
+      backdrop-filter: blur(10px);
+      overflow: auto;
+    }
+    .settings-panel.visible > .owner-card,
+    .rooms-panel.visible > .owner-card {
+      width: min(980px, 100%);
+      max-height: calc(100vh - 40px);
+      overflow: auto;
+    }
+    #roomListPanel.visible {
+      position: fixed;
+      inset: clamp(14px, 3vw, 28px);
+      z-index: 90;
+      display: block !important;
+      width: min(1080px, calc(100% - 28px));
+      max-height: calc(100vh - 40px);
+      margin: auto;
+      overflow: auto;
+      box-shadow: 0 30px 90px rgba(15, 61, 46, 0.26);
+    }
+    .panel-field-hidden { display: none !important; }
 
     /* ===== DAILY PREP CARD ===== */
     .prep-grid {
@@ -759,8 +787,11 @@
               <strong>เมนูจัดการ</strong>
               <button type="button" class="hamburger-close-btn" onclick="closeHamburgerPopup()" aria-label="ปิด">✕</button>
             </div>
-            <button class="hamburger-menu-item" onclick="showPanel('settings')">
-              <span class="menu-icon">⚙️</span> ตั้งค่าราคาและบัญชีโอน
+            <button class="hamburger-menu-item" onclick="showPanel('settings','account')">
+              <span class="menu-icon">⚙️</span> ตั้งค่าบัญชี
+            </button>
+            <button class="hamburger-menu-item" onclick="showPanel('settings','page')">
+              <span class="menu-icon">🌐</span> ตั้งค่าเพจ
             </button>
             <hr class="hamburger-divider">
             <button class="hamburger-menu-item" onclick="showPanel('rooms')">
@@ -918,7 +949,7 @@
       <section class="owner-grid settings-panel" id="settingsPanel">
         <div class="owner-card">
           <div class="section-mini-head">
-            <h4>⚙️ ตั้งค่าราคาและบัญชีโอน</h4>
+            <h4>⚙️ ตั้งค่าบัญชี</h4>
             <p>ข้อมูลจะบันทึกลงชีต Settings</p>
             <button type="button" class="panel-close-btn" onclick="closeOwnerPanel('settings')" aria-label="ปิด">✕</button>
           </div>
@@ -932,13 +963,16 @@
               <button type="button" class="secondary-btn setting-addon-add" id="addSettingAddonBtn">เพิ่มบริการเสริม</button>
               <small class="input-hint">เพิ่ม/ลบรายการและกำหนดราคาได้ รายการที่เปิดใช้จะแสดงให้ลูกค้าเลือกตอนจอง</small>
             </div>
-            <div class="field">
-              <label>ชื่อธนาคาร</label>
-              <input type="text" id="settingBankName" />
+            <div class="field full settings-subhead">
+              <h5>ตั้งค่าบัญชี</h5>
             </div>
             <div class="field">
               <label>ชื่อบัญชี</label>
               <input type="text" id="settingBankAccountName" />
+            </div>
+            <div class="field">
+              <label>ชื่อธนาคาร</label>
+              <input type="text" id="settingBankName" />
             </div>
             <div class="field">
               <label>เลขบัญชี</label>
@@ -982,7 +1016,53 @@
               <label>หมายเหตุการชำระเงิน</label>
               <textarea id="settingPaymentNote" rows="4" placeholder="เช่น โอนแล้วส่งสลิปในระบบนี้ หรือแจ้งเวลาที่ต้องการให้ตรวจสอบ"></textarea>
             </div>
-            <button type="submit">บันทึกการตั้งค่า</button>
+            <div class="field full owner-password-setting">
+              <label>Owner login password</label>
+              <div class="owner-password-fields">
+                <input type="password" id="settingOwnerPassword" placeholder="New password" autocomplete="new-password" />
+                <input type="password" id="settingOwnerPasswordConfirm" placeholder="Confirm password" autocomplete="new-password" />
+                <button type="button" class="secondary-btn" id="saveOwnerPasswordBtn">Save Owner password</button>
+              </div>
+              <small class="input-hint">Use this password on the Owner login page for this homestay.</small>
+            </div>
+            <div class="field full settings-subhead">
+              <h5>ตั้งค่าหน้า Hero</h5>
+            </div>
+            <div class="field">
+              <label>Hero pill</label>
+              <input type="text" id="settingHeroTextPill" />
+            </div>
+            <div class="field">
+              <label>Hero title</label>
+              <input type="text" id="settingHeroTextTitle" />
+            </div>
+            <div class="field full">
+              <label>Hero description</label>
+              <textarea id="settingHeroTextBody" rows="3"></textarea>
+            </div>
+            <div class="field full">
+              <label>Hero text image</label>
+              <input type="file" id="settingHeroTextImageFile" accept="image/*" />
+              <small class="input-hint" id="settingHeroTextImageName">ยังไม่ได้เลือกรูป</small>
+            </div>
+            <div class="field">
+              <label>Hero card p</label>
+              <input type="text" id="settingHeroCardEyebrow" />
+            </div>
+            <div class="field">
+              <label>Hero card strong</label>
+              <input type="text" id="settingHeroCardTitle" />
+            </div>
+            <div class="field">
+              <label>Hero card span</label>
+              <input type="text" id="settingHeroCardSubtitle" />
+            </div>
+            <div class="field full">
+              <label>Hero card image</label>
+              <input type="file" id="settingHeroCardImageFile" accept="image/*" />
+              <small class="input-hint" id="settingHeroCardImageName">ยังไม่ได้เลือกรูป</small>
+            </div>
+            <button type="submit">Save account and hero settings</button>
           </form>
         </div>
       </section>
@@ -1190,11 +1270,46 @@
     });
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') closeHamburgerPopup();
+      if (e.key === 'Escape') {
+        closeOwnerPanel('settings');
+        closeOwnerPanel('rooms');
+        closeOwnerPanel('roomlist');
+      }
+    });
+    ['settingsPanel', 'roomsPanel'].forEach(id => {
+      document.getElementById(id)?.addEventListener('click', e => {
+        if (e.target.id === id) {
+          if (id === 'settingsPanel') closeOwnerPanel('settings');
+          if (id === 'roomsPanel') closeOwnerPanel('rooms');
+        }
+      });
     });
 
     // ===== SHOW PANEL =====
     let activePanel = null;
-    function showPanel(name) {
+    function setSettingsMode(mode) {
+      const panel = document.getElementById('settingsPanel');
+      const title = panel?.querySelector('.section-mini-head h4');
+      const accountIds = ['settingBankAccountName','settingBankName','settingBankAccountNumber','settingPromptPayId'];
+      const pageIds = ['settingAddonList','settingPageUrl','settingGpsUrl','settingSiteName','settingLogoFileInput','settingPropertyPolicy','settingPaymentNote','settingHeroTextPill','settingHeroTextTitle','settingHeroTextBody','settingHeroTextImageFile','settingHeroCardEyebrow','settingHeroCardTitle','settingHeroCardSubtitle','settingHeroCardImageFile'];
+      const setVisible = (id, visible) => {
+        const el = document.getElementById(id);
+        const field = el?.closest('.field');
+        if (field) field.classList.toggle('panel-field-hidden', !visible);
+      };
+
+      accountIds.forEach(id => setVisible(id, mode === 'account'));
+      pageIds.forEach(id => setVisible(id, mode === 'page'));
+      document.querySelectorAll('#settingsPanel .settings-subhead').forEach((el, index) => {
+        el.classList.toggle('panel-field-hidden', mode === 'account' ? index !== 0 : index !== 1);
+      });
+      document.querySelector('#settingsPanel .owner-password-setting')?.classList.toggle('panel-field-hidden', mode !== 'account');
+      if (title) title.textContent = mode === 'page' ? '🌐 ตั้งค่าเพจ' : '⚙️ ตั้งค่าบัญชี';
+      const submitBtn = document.querySelector('#settingsForm button[type="submit"]');
+      if (submitBtn) submitBtn.textContent = mode === 'page' ? 'บันทึกตั้งค่าเพจ' : 'บันทึกตั้งค่าบัญชี';
+    }
+
+    function showPanel(name, mode = 'account') {
       // close hamburger popup
       closeHamburgerPopup();
 
@@ -1203,23 +1318,22 @@
       const roomListEl = document.getElementById('roomListPanel');
 
       if (name === 'settings') {
-        const open = settingsEl.classList.contains('visible');
+        const open = settingsEl.classList.contains('visible') && settingsEl.dataset.mode === mode;
+        setSettingsMode(mode);
+        settingsEl.dataset.mode = mode;
         settingsEl.classList.toggle('visible', !open);
         roomsEl.classList.remove('visible');
-        roomListEl.style.display = 'none';
-        if (!open) settingsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        roomListEl.classList.remove('visible');
       } else if (name === 'rooms') {
         const open = roomsEl.classList.contains('visible');
         roomsEl.classList.toggle('visible', !open);
         settingsEl.classList.remove('visible');
-        roomListEl.style.display = 'none';
-        if (!open) roomsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        roomListEl.classList.remove('visible');
       } else if (name === 'roomlist') {
-        const isHidden = roomListEl.style.display === 'none';
-        roomListEl.style.display = isHidden ? 'block' : 'none';
+        const isHidden = !roomListEl.classList.contains('visible');
+        roomListEl.classList.toggle('visible', isHidden);
         settingsEl.classList.remove('visible');
         roomsEl.classList.remove('visible');
-        if (isHidden) roomListEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }
 
@@ -1230,7 +1344,7 @@
 
       if (name === 'settings') settingsEl.classList.remove('visible');
       if (name === 'rooms') roomsEl.classList.remove('visible');
-      if (name === 'roomlist') roomListEl.style.display = 'none';
+      if (name === 'roomlist') roomListEl.classList.remove('visible');
     }
   </script>
 </body>

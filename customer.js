@@ -144,7 +144,7 @@ function renderRoomDetail(detail, roomName = "", roomId = "") {
   const safeId = escapeHtml(roomId || roomName).replace(/\s+/g, "_");
   return `
     <button type="button" class="detail-toggle-btn" onclick="openRoomDetailModal('${safeId}')">
-      ℹ️ ดูรายละเอียดห้องพัก
+      ดูรายละเอียด
     </button>`;
 }
 
@@ -357,10 +357,12 @@ function renderRooms() {
     <article class="room-card">
       ${renderImageBlock(room.image, room.name, "room-img")}
       <h4>${escapeHtml(room.name)}</h4>
-      ${renderRoomDetail(room.detail || "ห้องพักของโฮมสเตย์", room.name, room.id)}
       <div class="room-meta">
         <span class="price">${formatMoney(room.price)}</span>
-        <button type="button" onclick="selectRoom('${room.id}')">จองห้องนี้</button>
+        <div class="customer-room-actions">
+          ${renderRoomDetail(room.detail || "ห้องพักของโฮมสเตย์", room.name, room.id)}
+          <button type="button" class="book-room-btn" onclick="selectRoom('${room.id}')">จองห้องนี้</button>
+        </div>
       </div>
     </article>
   `).join("");
@@ -816,7 +818,7 @@ function getSummary() {
   const extraBedQty = Number(selectedExtraBed?.qty || 0);
   const extraBedTotal = Number(selectedExtraBed?.total || 0);
   const addonTotal = addonItems.reduce((sum, item) => sum + Number(item.total || 0), 0);
-  const bookingFee = Math.max(0, Number(settings.bookingFee?.value ?? settings.bookingFee ?? (typeof BOOKING_FEE !== "undefined" ? BOOKING_FEE : 20)));
+  const bookingFee = Math.max(0, Number(typeof BOOKING_FEE !== "undefined" ? BOOKING_FEE : 20));
   const grandTotal = roomTotal + addonTotal + bookingFee;
 
   return {

@@ -18,6 +18,7 @@ create table if not exists public.homestays (
   id uuid primary key default gen_random_uuid(),
   slug text not null unique,
   name text not null,
+  owner_password text not null default '1234',
   description text,
   logo_url text,
   page_url text,
@@ -28,6 +29,7 @@ create table if not exists public.homestays (
 );
 
 alter table public.homestays
+  add column if not exists owner_password text not null default '1234',
   add column if not exists description text,
   add column if not exists logo_url text,
   add column if not exists page_url text,
@@ -71,6 +73,7 @@ create table if not exists public.homestay_settings (
   bank_account_number text,
   promptpay_id text,
   qr_code_url text,
+  hero_content jsonb not null default '{}'::jsonb,
   payment_note text,
   property_policy text,
   created_at timestamptz not null default now(),
@@ -89,6 +92,7 @@ alter table public.homestay_settings
   add column if not exists bank_account_number text,
   add column if not exists promptpay_id text,
   add column if not exists qr_code_url text,
+  add column if not exists hero_content jsonb not null default '{}'::jsonb,
   add column if not exists payment_note text,
   add column if not exists property_policy text,
   add column if not exists created_at timestamptz not null default now(),

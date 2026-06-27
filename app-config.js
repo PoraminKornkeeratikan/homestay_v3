@@ -14,6 +14,8 @@ const OWNER_PASSWORD = "1234";
 
 const DEFAULT_ROOMS = [];
 
+const BOOKING_FEE = 40;
+
 const DEFAULT_SETTINGS = {
   siteName: { label: "ชื่อเว็บไซต์", value: "" },
   logoUrl: { label: "โลโก้", value: "" },
@@ -30,15 +32,24 @@ const DEFAULT_SETTINGS = {
   pageUrl: { label: "ลิงก์เพจ", value: "" },
   gpsUrl: { label: "ลิงก์ GPS", value: "" },
   qrCodeUrl: { label: "QR-code ชำระเงิน", value: "" },
-  bookingFee: { label: "ค่าจอง", value: 40 },
+  bookingFee: { label: "ค่าจอง", value: BOOKING_FEE },
   paymentNote: { label: "หมายเหตุชำระเงิน", value: "โอนแล้วส่งสลิปให้แอดมินเพื่อยืนยันการจอง" },
+  heroContent: {
+    label: "Hero content",
+    textPill: "จองง่าย • เลือกบริการเสริม • ชำระผ่านบัญชี",
+    textTitle: "จองห้องพัก พร้อมหมูกระทะและเตียงเสริม",
+    textBody: "เลือกห้อง วันที่เข้าพัก เพิ่มบริการเสริม แล้วโอนชำระผ่านบัญชีธนาคารของโฮมสเตย์",
+    textImage: "",
+    cardEyebrow: "บรรยากาศพักผ่อน",
+    cardTitle: "Green",
+    cardSubtitle: "Minimal Homestay",
+    cardImage: ""
+  },
   propertyPolicy: {
     label: "นโยบายที่พัก",
     value: "1. เช็กอินได้ตั้งแต่ 14:00 น.\n2. เช็กเอาต์ก่อน 12:00 น.\n3. กรุณางดส่งเสียงดังหลัง 22:00 น.\n4. หากมีของเสียหาย ผู้เข้าพักต้องรับผิดชอบตามจริง\n5. ต้องแสดงเลขรายการจองหรือรูปหลักฐานการจองตอนเข้าพัก"
   }
 };
-
-const BOOKING_FEE = 40;
 
 // ======= CREDIT SYSTEM =======
 const CREDIT_PER_BOOKING = 40;   // เครดิตที่ใช้ต่อการจอง 1 ครั้ง

@@ -161,20 +161,6 @@
     <section class="hidden" id="adminDashboard">
       <div class="admin-card" style="margin-bottom:1.5rem">
         <div class="section-mini-head">
-          <h4>ค่าจอง</h4>
-          <p>กำหนดค่าจองที่จะบวกในยอดชำระของลูกค้าทุกการจอง</p>
-        </div>
-        <form class="settings-form" id="adminBookingFeeForm">
-          <div class="field">
-            <label>ค่าจอง / รายการ</label>
-            <input type="number" id="adminBookingFeeInput" min="0" step="1" />
-          </div>
-          <button type="submit">บันทึกค่าจอง</button>
-        </form>
-      </div>
-
-      <div class="admin-card" style="margin-bottom:1.5rem">
-        <div class="section-mini-head">
           <h4>เพิ่มโฮมสเตย์</h4>
           <p>สร้างโฮมสเตย์ใหม่พร้อมค่าเริ่มต้นสำหรับหน้า Owner และ Customer</p>
         </div>
@@ -189,7 +175,12 @@
             <small class="input-hint">ใช้ใน URL เช่น owner.html?homestay=baan-suan</small>
           </div>
           <div class="field">
-            <label>ลิงก์เพจ</label>
+            <label>Owner password</label>
+            <input type="text" id="adminHomestayOwnerPassword" placeholder="Owner password" />
+            <small class="input-hint">Owner login password. Blank uses 1234.</small>
+          </div>
+          <div class="field">
+            <label>Owner page URL</label>
             <input type="url" id="adminHomestayPageUrl" placeholder="https://facebook.com/..." />
           </div>
           <div class="field">
@@ -301,11 +292,10 @@
     let selectedPlanType = "";
     let selectedCreditPkg = null;
     let adminSettings = normalizeSettings(DEFAULT_SETTINGS);
-    const adminBookingFeeForm = document.getElementById("adminBookingFeeForm");
-    const adminBookingFeeInput = document.getElementById("adminBookingFeeInput");
     const adminHomestayForm = document.getElementById("adminHomestayForm");
     const adminHomestayName = document.getElementById("adminHomestayName");
     const adminHomestaySlug = document.getElementById("adminHomestaySlug");
+    const adminHomestayOwnerPassword = document.getElementById("adminHomestayOwnerPassword");
     const adminHomestayPageUrl = document.getElementById("adminHomestayPageUrl");
     const adminHomestayGpsUrl = document.getElementById("adminHomestayGpsUrl");
     const adminHomestayResult = document.getElementById("adminHomestayResult");
@@ -363,6 +353,7 @@
     function renderCreatedHomestay(homestay) {
       if (!adminHomestayResult) return;
       const slug = homestay.slug || "-";
+      const ownerPassword = homestay.ownerPassword || homestay.owner_password || (typeof OWNER_PASSWORD !== "undefined" ? OWNER_PASSWORD : "1234");
       const ownerUrl = homestay.ownerUrl || `owner.html?homestay=${encodeURIComponent(slug)}`;
       const customerUrl = homestay.customerUrl || `customer.html?homestay=${encodeURIComponent(slug)}`;
       const warnings = Array.isArray(homestay.warnings) ? homestay.warnings.filter(Boolean) : [];
@@ -371,6 +362,7 @@
         <div style="text-align:left">
           <b>สร้างโฮมสเตย์แล้ว: ${escapeHtml(homestay.name || slug)}</b><br>
           <span>Slug: ${escapeHtml(slug)}</span><br>
+          <span>Owner password: <strong>${escapeHtml(ownerPassword)}</strong></span><br>
           <a href="${escapeHtml(ownerUrl)}" target="_blank" rel="noopener">เปิดหน้า Owner</a><br>
           <a href="${escapeHtml(customerUrl)}" target="_blank" rel="noopener">เปิดหน้า Customer</a>
         </div>
@@ -439,6 +431,7 @@
         const slug = escapeHtml(homestay.slug || "-");
         const name = escapeHtml(homestay.name || homestay.slug || "Homestay");
         const credits = Number(homestay.credits ?? homestay.plan?.credits ?? 0);
+        const ownerPassword = homestay.ownerPassword || homestay.owner_password || (typeof OWNER_PASSWORD !== "undefined" ? OWNER_PASSWORD : "1234");
         const ownerUrl = escapeHtml(homestay.ownerUrl || `owner.html?homestay=${encodeURIComponent(homestay.slug || "")}`);
         const customerUrl = escapeHtml(homestay.customerUrl || `customer.html?homestay=${encodeURIComponent(homestay.slug || "")}`);
         const status = getAdminHomestayStatus(homestay);
@@ -453,6 +446,10 @@
                   <h5>${name}</h5>
                 </div>
                 <div class="admin-homestay-meta">Slug: ${slug} • แพ็กเกจ: ${escapeHtml(formatAdminPlanLabel(homestay))}</div>
+                <div class="admin-owner-password-row">
+                  <span>Owner password</span>
+                  <strong>${escapeHtml(ownerPassword)}</strong>
+                </div>
                 <div class="admin-homestay-links">
                   <a href="${ownerUrl}" target="_blank" rel="noopener">Owner</a>
                   <a href="${customerUrl}" target="_blank" rel="noopener">Customer</a>
@@ -461,6 +458,8 @@
               <div class="admin-credit-pill">${credits.toLocaleString("th-TH")} เครดิต</div>
             </div>
             <div class="admin-homestay-actions">
+              <input type="text" value="${escapeHtml(ownerPassword)}" data-role="ownerPassword" aria-label="Owner password" />
+              <button type="button" class="admin-save-password" data-action="saveOwnerPassword">Save password</button>
               <input type="number" min="1" step="1" value="10" data-role="creditAmount" aria-label="จำนวนเครดิต" />
               <button type="button" class="admin-add-credit" data-action="addCredits">เติมเครดิต</button>
               <button type="button" class="admin-remove-credit" data-action="removeCredits">ลบเครดิต</button>
@@ -536,6 +535,33 @@
       }
     }
 
+    async function updateOwnerPassword(homestayId) {
+      const homestay = getAdminHomestayById(homestayId);
+      if (!homestay) return;
+      const card = Array.from(adminHomestayList?.querySelectorAll("[data-homestay-id]") || [])
+        .find(item => String(item.dataset.homestayId) === String(homestayId));
+      const passwordInput = card?.querySelector('[data-role="ownerPassword"]');
+      const ownerPassword = String(passwordInput?.value || "").trim();
+      if (!ownerPassword) {
+        showToast("Please enter Owner password");
+        return;
+      }
+
+      try {
+        const result = await apiRequest({
+          action: "adminUpdateOwnerPassword",
+          homestayId,
+          ownerPassword
+        });
+        if (!result.ok) throw new Error(result.message || "Save Owner password failed");
+        showToast("Owner password saved");
+        await loadAdminHomestays();
+      } catch (error) {
+        console.error(error);
+        showToast(`Save Owner password failed: ${error.message || "Unknown error"}`);
+      }
+    }
+
     function handleAdminHomestayAction(event) {
       const button = event.target.closest("[data-action]");
       if (!button) return;
@@ -545,6 +571,7 @@
 
       if (button.dataset.action === "addCredits") updateHomestayCredits(homestayId, 1);
       if (button.dataset.action === "removeCredits") updateHomestayCredits(homestayId, -1);
+      if (button.dataset.action === "saveOwnerPassword") updateOwnerPassword(homestayId);
       if (button.dataset.action === "deleteHomestay") deleteAdminHomestay(homestayId);
     }
 
@@ -563,6 +590,7 @@
           homestay: {
             name,
             slug,
+            ownerPassword: adminHomestayOwnerPassword?.value.trim() || "",
             pageUrl: adminHomestayPageUrl?.value.trim() || "",
             gpsUrl: adminHomestayGpsUrl?.value.trim() || ""
           }
@@ -582,11 +610,6 @@
       }
     }
 
-    function renderAdminBookingFeeForm() {
-      if (!adminBookingFeeInput) return;
-      adminBookingFeeInput.value = Number(adminSettings.bookingFee?.value ?? adminSettings.bookingFee ?? (typeof BOOKING_FEE !== "undefined" ? BOOKING_FEE : 20));
-    }
-
     function renderAdminTopbarTitle() {
       const title = document.querySelector("header.topbar .brand h1");
       const subtitle = document.querySelector("header.topbar .brand p");
@@ -603,7 +626,6 @@
         adminSettings = loadedSettings;
         applyBrandAssets(adminSettings);
         renderAdminTopbarTitle();
-        renderAdminBookingFeeForm();
         renderCurrentStatus();
       } catch (error) {
         console.warn("Admin plan sync failed; clearing stale local credits:", error?.message);
@@ -611,28 +633,7 @@
         adminSettings = normalizeSettings(typeof localGetSettings === "function" ? localGetSettings() : DEFAULT_SETTINGS);
         applyBrandAssets(adminSettings);
         renderAdminTopbarTitle();
-        renderAdminBookingFeeForm();
         renderCurrentStatus();
-      }
-    }
-
-    async function saveAdminBookingFee(event) {
-      event.preventDefault();
-      const bookingFee = Math.max(0, Number(adminBookingFeeInput?.value || 0));
-      const nextSettings = {
-        ...adminSettings,
-        bookingFee: { label: "ค่าจอง", value: bookingFee }
-      };
-
-      try {
-        const result = await apiRequest({ action: "updateSettings", settings: nextSettings });
-        if (!result.ok) throw new Error(result.message || "บันทึกค่าจองไม่สำเร็จ");
-        adminSettings = normalizeSettings(result.data || nextSettings);
-        renderAdminBookingFeeForm();
-        showToast("บันทึกค่าจองแล้ว");
-      } catch (error) {
-        console.error(error);
-        showToast("บันทึกค่าจองไม่สำเร็จ");
       }
     }
 
@@ -823,7 +824,6 @@
       document.getElementById("adminPassword").value = "";
     });
 
-    adminBookingFeeForm?.addEventListener("submit", saveAdminBookingFee);
     adminHomestayForm?.addEventListener("submit", createAdminHomestay);
     adminHomestayList?.addEventListener("click", handleAdminHomestayAction);
     refreshHomestaysBtn?.addEventListener("click", loadAdminHomestays);
