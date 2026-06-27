@@ -522,15 +522,23 @@
       z-index: 90;
       display: grid !important;
       place-items: center;
+      align-items: center;
+      justify-items: center;
+      grid-template-columns: minmax(0, 1fr) !important;
       padding: clamp(14px, 3vw, 28px);
       background: rgba(15, 61, 46, 0.48);
       backdrop-filter: blur(10px);
       overflow: auto;
     }
+    #settingsPanel.visible {
+      align-content: center;
+      justify-content: center;
+    }
     .settings-panel.visible > .owner-card,
     .rooms-panel.visible > .owner-card {
       width: min(980px, 100%);
       max-height: calc(100vh - 40px);
+      margin: auto;
       overflow: auto;
     }
     #roomListPanel.visible {
@@ -910,7 +918,6 @@
               <p style="color:#6b7280;margin:0">รอ Admin ตรวจสลิปและอนุมัติเครดิต<br>เครดิตจะเข้าหลังจาก Admin กดอนุมัติ</p>
               <div class="pending-badge" style="margin-top:1rem">🟡 รอการอนุมัติ</div>
             </div>
-            <button class="apply-btn" style="background:#6b7280" onclick="closeTopupModal()">ปิด</button>
           </div>
         </div>
       </div>

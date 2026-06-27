@@ -372,7 +372,7 @@ function buildDecision(
   return {
     passed: issues.length === 0,
     reviewRequired,
-    autoCancelled: severeFailed,
+    autoCancelled: false,
     message: issues.length
       ? issues.join(" / ")
       : "ตรวจสลิปผ่าน",
@@ -397,12 +397,9 @@ function buildPatchFromDecision(decision: ReturnType<typeof buildDecision>, easy
   if (decision.passed) {
     patch.payment_status = "ชำระแล้ว";
     patch.status = "ชำระแล้ว";
-  } else if (decision.reviewRequired) {
+  } else {
     patch.payment_status = "รอตรวจสอบสลิป";
-    patch.status = "รอตรวจสอบสลิป";
-  } else if (decision.autoCancelled) {
-    patch.payment_status = "ยกเลิก";
-    patch.status = "ยกเลิก";
+    patch.status = "รอยืนยัน";
   }
 
   return patch;

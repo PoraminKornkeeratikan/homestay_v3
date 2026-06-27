@@ -420,6 +420,7 @@ function syncLegacyAddonPrice(addonId, price) {
 
 async function saveSettings(event) {
   event.preventDefault();
+  showLoadingPopup("กำลังบันทึกการตั้งค่า");
 
   const logoFile = settingLogoFileInput.files && settingLogoFileInput.files[0];
   const heroTextImageFile = settingHeroTextImageFile?.files && settingHeroTextImageFile.files[0];
@@ -435,15 +436,25 @@ async function saveSettings(event) {
 
     if (logoFile.size > maxLogoSize) {
       showToast("ไฟล์โลโก้ต้องมีขนาดไม่เกิน 2MB");
+      hideLoadingPopup();
       return;
     }
 
     if (!logoFile.type.startsWith("image/")) {
       showToast("กรุณาอัปโหลดไฟล์รูปภาพโลโก้เท่านั้น");
+      hideLoadingPopup();
       return;
     }
 
-    const logoBase64 = await fileToBase64(logoFile);
+    let logoBase64 = "";
+    try {
+      logoBase64 = await fileToBase64(logoFile);
+    } catch (error) {
+      console.error(error);
+      showToast("อ่านไฟล์โลโก้ไม่สำเร็จ");
+      hideLoadingPopup();
+      return;
+    }
 
     logoSetting = {
       label: "โลโก้",
@@ -459,13 +470,23 @@ async function saveSettings(event) {
     const maxHeroImageSize = 5 * 1024 * 1024;
     if (file.size > maxHeroImageSize) {
       showToast("Hero image must be smaller than 5MB");
+      hideLoadingPopup();
       return null;
     }
     if (!file.type.startsWith("image/")) {
       showToast("Please upload image files only");
+      hideLoadingPopup();
       return null;
     }
-    const base64 = await fileToBase64(file);
+    let base64 = "";
+    try {
+      base64 = await fileToBase64(file);
+    } catch (error) {
+      console.error(error);
+      showToast("อ่านไฟล์รูป Hero ไม่สำเร็จ");
+      hideLoadingPopup();
+      return null;
+    }
     return {
       label,
       fileName: file.name,
@@ -477,7 +498,10 @@ async function saveSettings(event) {
   const currentHero = normalizeHeroContent(settings.heroContent || {});
   const nextHeroTextImage = await buildHeroImageSetting(heroTextImageFile, currentHero.textImage, "Hero text image");
   const nextHeroCardImage = await buildHeroImageSetting(heroCardImageFile, currentHero.cardImage, "Hero card image");
-  if (nextHeroTextImage === null || nextHeroCardImage === null) return;
+  if (nextHeroTextImage === null || nextHeroCardImage === null) {
+    hideLoadingPopup();
+    return;
+  }
   const heroContent = {
     label: "Hero content",
     textPill: settingHeroTextPill?.value.trim() || currentHero.textPill,
@@ -522,6 +546,8 @@ async function saveSettings(event) {
   } catch (error) {
     console.error(error);
     showToast("บันทึกการตั้งค่าไม่สำเร็จ");
+  } finally {
+    hideLoadingPopup();
   }
 }
 
@@ -1249,6 +1275,9 @@ function renderSlipCheck(label, check) {
 function renderSlipVerifyStatus(booking = {}) {
   const status = String(booking.slipVerifyStatus || "not_checked");
   const checks = booking.slipVerifyChecks || {};
+  const duplicateSlipHtml = checks.duplicate?.ok === false
+    ? renderSlipCheck("สลิปซ้ำ", checks.duplicate)
+    : "";
 
   if (!booking.slipUrl) {
     return `<small class="slip-verify muted">ยังไม่มีสลิปให้ตรวจ</small>`;
@@ -1270,6 +1299,7 @@ function renderSlipVerifyStatus(booking = {}) {
       ${renderSlipCheck("ชื่อบัญชี", checks.accountName)}
       ${renderSlipCheck("เวลา", checks.transferTime)}
       ${renderSlipCheck("จำนวนเงิน", checks.amount)}
+      ${duplicateSlipHtml}
     </div>
   `;
 }
@@ -1799,8 +1829,12 @@ function sendTopupRequest() {
   const reqs = getTopupRequests();
   const isYearly = selectedTopupPkg.credits === "YEAR";
   const topupReceiver = typeof TOPUP_PAYMENT_SETTINGS !== "undefined" ? TOPUP_PAYMENT_SETTINGS : {};
+  const homestaySlug = typeof getCurrentHomestaySlug === "function" ? getCurrentHomestaySlug() : "";
+  const homestayName = String(settings.siteName?.value || homestaySlug || "Homestay").trim();
   const newReq = {
     id: "TR" + Date.now(),
+    homestayName,
+    homestaySlug,
     credits: selectedTopupPkg.credits,
     price: selectedTopupPkg.price,
     label: selectedTopupPkg.label,
@@ -1859,6 +1893,7 @@ setInterval(async () => {
           showToast(`✅ Admin อนุมัติแล้ว! ได้รับ ${r.credits} เครดิต`);
         }
         r.status = "done";
+        r.doneAt = new Date().toISOString();
       } catch (error) {
         console.error(error);
         showToast("บันทึกเครดิตไม่สำเร็จ กรุณาลองใหม่");

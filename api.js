@@ -216,6 +216,22 @@ function normalizeHeroContent(hero = {}) {
   };
 }
 
+function defaultBookingFee() {
+  return Math.max(0, Number(typeof BOOKING_FEE !== "undefined" ? BOOKING_FEE : 20));
+}
+
+function defaultCreditPerBooking() {
+  return Math.max(0, Number(typeof CREDIT_PER_BOOKING !== "undefined" ? CREDIT_PER_BOOKING : 40));
+}
+
+function getSettingsBookingFee(settings = {}) {
+  return Math.max(0, Number(settings.bookingFee?.value ?? settings.bookingFee ?? defaultBookingFee()));
+}
+
+function getSettingsCreditPerBooking(settings = {}) {
+  return Math.max(0, Number(settings.creditPerBooking?.value ?? settings.creditPerBooking ?? defaultCreditPerBooking()));
+}
+
 function settingObjectFromRow(row = {}) {
   return normalizeSettings({
     siteName: { label: "ชื่อเว็บไซต์", value: row.site_name || DEFAULT_SETTINGS.siteName.value },
@@ -236,7 +252,8 @@ function settingObjectFromRow(row = {}) {
     gpsUrl: { label: "ลิงก์ GPS", value: row.gps_url || "" },
     qrCodeUrl: { label: "QR-code ชำระเงิน", value: row.qr_code_url || "" },
     promptPayId: { label: "เลขพร้อมเพย์สำหรับ QR", value: row.promptpay_id || "" },
-    bookingFee: { label: "ค่าจอง", value: typeof BOOKING_FEE !== "undefined" ? BOOKING_FEE : 20 },
+    bookingFee: { label: "ค่าจอง", value: Number(row.booking_fee ?? defaultBookingFee()) },
+    creditPerBooking: { label: "เครดิตที่ใช้ต่อการจอง", value: Number(row.credit_per_booking ?? defaultCreditPerBooking()) },
     paymentNote: { label: "หมายเหตุชำระเงิน", value: row.payment_note || "" },
     heroContent: normalizeHeroContent(row.hero_content || {}),
     propertyPolicy: { label: "นโยบายที่พัก", value: row.property_policy || "" }
@@ -251,7 +268,8 @@ function settingsRowFromObject(settings = {}, homestayId) {
     mookata_price: Number(settings.mookata?.price || 0),
     extra_bed_price: Number(settings.extraBed?.price || 0),
     extra_addons: normalizeAddonItems(settings.addons?.items, settings),
-    booking_fee: Number(typeof BOOKING_FEE !== "undefined" ? BOOKING_FEE : 20),
+    booking_fee: getSettingsBookingFee(settings),
+    credit_per_booking: getSettingsCreditPerBooking(settings),
     bank_name: settings.bankName?.value || "",
     bank_account_name: settings.bankAccountName?.value || "",
     bank_account_number: settings.bankAccountNumber?.value || "",
@@ -261,6 +279,28 @@ function settingsRowFromObject(settings = {}, homestayId) {
     payment_note: settings.paymentNote?.value || "",
     property_policy: settings.propertyPolicy?.value || ""
   };
+}
+
+async function upsertSettingsRow(settingsRow) {
+  const optionalColumns = ["credit_per_booking", "hero_content"];
+  let row = { ...settingsRow };
+
+  for (let attempt = 0; attempt <= optionalColumns.length; attempt += 1) {
+    try {
+      return await supabaseRequest("homestay_settings?on_conflict=homestay_id", {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+        body: JSON.stringify(row)
+      });
+    } catch (error) {
+      if (!isSchemaColumnError(error)) throw error;
+      const nextColumn = optionalColumns.find(column => Object.prototype.hasOwnProperty.call(row, column));
+      if (!nextColumn) throw error;
+      delete row[nextColumn];
+    }
+  }
+
+  throw new Error("Save settings failed.");
 }
 
 function roomObjectFromRow(row = {}) {
@@ -438,11 +478,13 @@ async function saveSupabasePlan(plan = {}, homestayId, options = {}) {
 }
 
 async function deductBookingCredits(homestayId, bookingId) {
-  if (typeof CREDIT_PER_BOOKING === "undefined") return null;
-
-  const planRows = await supabaseRequest(`homestay_plans?homestay_id=eq.${homestayId}&select=*`);
+  const [planRows, settingsRows] = await Promise.all([
+    supabaseRequest(`homestay_plans?homestay_id=eq.${homestayId}&select=*`),
+    supabaseRequest(`homestay_settings?homestay_id=eq.${homestayId}&select=*`)
+  ]);
   const plan = planRows?.[0] || null;
   const planType = plan?.plan_type || "credit";
+  const creditPerBooking = getSettingsCreditPerBooking(settingObjectFromRow(settingsRows?.[0] || {}));
 
   if (planType !== "credit") {
     syncPlanFromRow(plan);
@@ -452,7 +494,7 @@ async function deductBookingCredits(homestayId, bookingId) {
   const currentCredits = Number(
     plan?.credits ?? (typeof getCredits === "function" ? getCredits() : 0)
   );
-  const nextCredits = Math.max(0, currentCredits - Number(CREDIT_PER_BOOKING || 0));
+  const nextCredits = Math.max(0, currentCredits - creditPerBooking);
   const planPayload = {
     homestay_id: homestayId,
     credits: nextCredits,
@@ -472,7 +514,7 @@ async function deductBookingCredits(homestayId, bookingId) {
     body: JSON.stringify({
       homestay_id: homestayId,
       booking_id: bookingId || null,
-      amount: -Number(CREDIT_PER_BOOKING || 0),
+      amount: -creditPerBooking,
       reason: "booking_created"
     })
   });
@@ -497,10 +539,12 @@ async function createSupabaseHomestay(payload = {}) {
   const warnings = [];
   const logoUrl = payload.logoUrl || DEFAULT_SETTINGS.logoUrl?.value || "";
   const ownerPassword = normalizeOwnerPassword(payload.ownerPassword);
+  const lineToId = String(payload.lineToId || payload.line_to_id || "").trim();
   const fullHomestayRow = {
     slug,
     name,
     owner_password: ownerPassword,
+    line_to_id: lineToId,
     logo_url: logoUrl,
     page_url: payload.pageUrl || "",
     gps_url: payload.gpsUrl || "",
@@ -523,7 +567,7 @@ async function createSupabaseHomestay(payload = {}) {
     }
     if (!isSchemaColumnError(error)) throw error;
 
-    warnings.push("Saved homestay without optional page/logo/GPS fields. Run supabase_admin_create_homestay_migration.sql to add those columns.");
+    warnings.push("Saved homestay without optional page/logo/GPS/LINE fields. Run supabase_admin_create_homestay_migration.sql to add those columns.");
     try {
       homestayRows = await insertHomestay(minimalHomestayRow);
     } catch (retryError) {
@@ -547,14 +591,17 @@ async function createSupabaseHomestay(payload = {}) {
     pageUrl: { label: "Page URL", value: payload.pageUrl || "" },
     gpsUrl: { label: "GPS URL", value: payload.gpsUrl || "" }
   });
+  try {
+    const globalBookingConfig = await getSupabaseGlobalBookingConfig();
+    settings.bookingFee = globalBookingConfig.bookingFee;
+    settings.creditPerBooking = globalBookingConfig.creditPerBooking;
+  } catch (error) {
+    warnings.push(`Using default booking settings: ${error.message || "unknown error"}`);
+  }
   const settingsRow = settingsRowFromObject(settings, homestay.id);
 
   try {
-    await supabaseRequest("homestay_settings?on_conflict=homestay_id", {
-      method: "POST",
-      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-      body: JSON.stringify(settingsRow)
-    });
+    await upsertSettingsRow(settingsRow);
   } catch (error) {
     if (isSchemaColumnError(error)) {
       try {
@@ -591,6 +638,7 @@ async function createSupabaseHomestay(payload = {}) {
     name: homestay.name || name,
     slug: homestay.slug || slug,
     ownerPassword: homestay.owner_password || ownerPassword,
+    lineToId: homestay.line_to_id || lineToId,
     settings: settingObjectFromRow(settingsRow),
     plan,
     warnings,
@@ -609,6 +657,47 @@ async function updateSupabaseOwnerPassword(homestayId, ownerPassword) {
   return rows?.[0] || { id: homestayId, owner_password: password };
 }
 
+async function updateSupabaseHomestayLineToId(homestayId, lineToId) {
+  const nextLineToId = String(lineToId || "").trim();
+  const rows = await supabaseRequest(`homestays?id=eq.${encodeURIComponent(homestayId)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ line_to_id: nextLineToId })
+  });
+  return rows?.[0] || { id: homestayId, line_to_id: nextLineToId };
+}
+
+async function getSupabaseGlobalBookingConfig() {
+  let rows;
+  try {
+    rows = await supabaseRequest("homestay_settings?select=booking_fee,credit_per_booking&limit=1");
+  } catch (error) {
+    if (!isSchemaColumnError(error)) throw error;
+    rows = await supabaseRequest("homestay_settings?select=booking_fee&limit=1");
+  }
+  return normalizeSettings({
+    bookingFee: { label: "ค่าจอง", value: Number(rows?.[0]?.booking_fee ?? defaultBookingFee()) },
+    creditPerBooking: { label: "เครดิตที่ใช้ต่อการจอง", value: Number(rows?.[0]?.credit_per_booking ?? defaultCreditPerBooking()) }
+  });
+}
+
+async function updateSupabaseGlobalBookingConfig(settings = {}) {
+  const bookingFee = getSettingsBookingFee(settings);
+  const creditPerBooking = getSettingsCreditPerBooking(settings);
+  const homestays = await supabaseRequest("homestays?select=id");
+
+  await Promise.all((homestays || []).map(homestay => upsertSettingsRow({
+    homestay_id: homestay.id,
+    booking_fee: bookingFee,
+    credit_per_booking: creditPerBooking
+  })));
+
+  return normalizeSettings({
+    bookingFee: { label: "ค่าจอง", value: bookingFee },
+    creditPerBooking: { label: "เครดิตที่ใช้ต่อการจอง", value: creditPerBooking }
+  });
+}
+
 async function listSupabaseAdminHomestays() {
   const [homestayRows, planRows] = await Promise.all([
     supabaseRequest("homestays?select=*&order=created_at.desc"),
@@ -625,6 +714,7 @@ async function listSupabaseAdminHomestays() {
       credits: Number(plan?.credits || 0),
       planType: plan?.plan_type || "credit",
       ownerPassword: homestay.owner_password || getDefaultOwnerPassword(),
+      lineToId: homestay.line_to_id || "",
       ownerUrl: `owner.html?homestay=${encodeURIComponent(slug)}`,
       customerUrl: `customer.html?homestay=${encodeURIComponent(slug)}`
     };
@@ -674,14 +764,20 @@ function applyHeroContent(settings = {}) {
     const el = document.querySelector(selector);
     if (el && value) el.textContent = value;
   };
-  const setImage = (selector, value, altText) => {
+  const hideLegacyImage = selector => {
     const img = document.querySelector(selector);
     if (!img) return;
+    img.classList.add("hidden");
+    img.removeAttribute("src");
+    img.alt = "";
+  };
+  const setHeroBackground = (el, value, overlay) => {
+    if (!el) return;
     const url = String(value || "").trim();
-    img.classList.toggle("hidden", !url);
     if (url) {
-      img.src = url;
-      img.alt = altText || "";
+      el.style.backgroundImage = `${overlay}, url(${JSON.stringify(url)})`;
+    } else {
+      el.style.removeProperty("background-image");
     }
   };
 
@@ -689,14 +785,24 @@ function applyHeroContent(settings = {}) {
     setText(".hero-text .pill", hero.textPill);
     setText(".hero-text h2", hero.textTitle);
     setText(".hero-text p", hero.textBody);
-    setImage(".hero-text .hero-text-image", hero.textImage, hero.textTitle);
+    setHeroBackground(
+      heroText,
+      hero.textImage,
+      "linear-gradient(135deg, rgba(255,255,255,0.95), rgba(232,246,239,0.86))"
+    );
+    hideLegacyImage(".hero-text .hero-text-image");
   }
 
   if (heroCard) {
     setText(".hero-card p", hero.cardEyebrow);
     setText(".hero-card strong", hero.cardTitle);
     setText(".hero-card span", hero.cardSubtitle);
-    setImage(".hero-card .hero-card-image", hero.cardImage, hero.cardTitle);
+    setHeroBackground(
+      heroCard,
+      hero.cardImage,
+      "linear-gradient(180deg, rgba(15,61,46,0.06), rgba(15,61,46,0.88))"
+    );
+    hideLegacyImage(".hero-card .hero-card-image");
   }
 }
 
@@ -966,6 +1072,21 @@ function queueSlipVerification(bookingId, homestaySlug) {
   });
 }
 
+function queueLineBookingNotification(booking = {}, homestay = {}) {
+  if (!booking?.id || !isSupabaseReady) return;
+  supabaseFunctionRequest("line-booking-notify", {
+    booking,
+    homestay: {
+      id: homestay.id || "",
+      name: homestay.name || "",
+      slug: homestay.slug || "",
+      lineToId: homestay.lineToId || homestay.line_to_id || ""
+    }
+  }).catch(error => {
+    console.warn("LINE booking notification skipped:", error?.message || error);
+  });
+}
+
 function normalizeGalleryImages(room = {}) {
   const images = [];
   const addImage = value => {
@@ -1045,6 +1166,16 @@ async function supabaseApiRequest(payload) {
     return { ok: true, data: homestays, count: homestays.length, mode: "supabase" };
   }
 
+  if (action === "adminGetBookingConfig") {
+    const settings = await getSupabaseGlobalBookingConfig();
+    return { ok: true, data: settings, mode: "supabase" };
+  }
+
+  if (action === "adminUpdateGlobalBookingConfig") {
+    const settings = await updateSupabaseGlobalBookingConfig(payload.settings || {});
+    return { ok: true, data: settings, mode: "supabase" };
+  }
+
   if (action === "adminUpdateHomestayPlan") {
     const homestayId = String(payload.homestayId || "").trim();
     if (!homestayId) throw new Error("Missing homestay id.");
@@ -1057,6 +1188,13 @@ async function supabaseApiRequest(payload) {
     if (!homestayId) throw new Error("Missing homestay id.");
     const homestay = await updateSupabaseOwnerPassword(homestayId, payload.ownerPassword);
     return { ok: true, data: { ...homestay, ownerPassword: homestay.owner_password || normalizeOwnerPassword(payload.ownerPassword) }, mode: "supabase" };
+  }
+
+  if (action === "adminUpdateHomestayLineToId") {
+    const homestayId = String(payload.homestayId || "").trim();
+    if (!homestayId) throw new Error("Missing homestay id.");
+    const homestay = await updateSupabaseHomestayLineToId(homestayId, payload.lineToId);
+    return { ok: true, data: { ...homestay, lineToId: homestay.line_to_id || "" }, mode: "supabase" };
   }
 
   if (action === "adminDeleteHomestay") {
@@ -1145,29 +1283,14 @@ async function supabaseApiRequest(payload) {
     }
 
     const booking = rows?.[0] ? await signBookingSlipUrls(bookingObjectFromRow(rows[0])) : null;
+    if (booking) queueLineBookingNotification(booking, homestay);
     return { ok: true, data: booking, mode: "supabase" };
   }
 
   if (action === "updateSettings") {
     const uploadedSettings = await uploadLogoToStorage(payload.settings || {}, homestay.slug);
     const settingsRow = settingsRowFromObject(uploadedSettings, homestayId);
-    let rows;
-    try {
-      rows = await supabaseRequest("homestay_settings?on_conflict=homestay_id", {
-        method: "POST",
-        headers: { Prefer: "resolution=merge-duplicates,return=representation" },
-        body: JSON.stringify(settingsRow)
-      });
-    } catch (error) {
-      if (!isSchemaColumnError(error) || !Object.prototype.hasOwnProperty.call(settingsRow, "hero_content")) throw error;
-      const legacySettingsRow = { ...settingsRow };
-      delete legacySettingsRow.hero_content;
-      rows = await supabaseRequest("homestay_settings?on_conflict=homestay_id", {
-        method: "POST",
-        headers: { Prefer: "resolution=merge-duplicates,return=representation" },
-        body: JSON.stringify(legacySettingsRow)
-      });
-    }
+    const rows = await upsertSettingsRow(settingsRow);
 
     await supabaseRequest(`homestays?id=eq.${homestayId}`, {
       method: "PATCH",
@@ -1258,7 +1381,7 @@ async function supabaseApiRequest(payload) {
 
   if (action === "updateStatus") {
     const next = { status: payload.status };
-    if (payload.status === "ชำระแล้ว") next.payment_status = "ชำระแล้ว";
+    if (payload.status === "ชำระแล้ว" || payload.status === "ยืนยันแล้ว") next.payment_status = "ชำระแล้ว";
     if (payload.status === "ยกเลิก") next.payment_status = "ยกเลิก";
 
     await supabaseRequest(`bookings?id=eq.${payload.id}&homestay_id=eq.${homestayId}`, {
@@ -1388,7 +1511,13 @@ async function localApiRequest(payload) {
     if (!name) return { ok: false, message: "กรุณากรอกชื่อโฮมสเตย์", mode: "local" };
     const slug = normalizeHomestaySlug(homestay.slug || name);
     const ownerPassword = normalizeOwnerPassword(homestay.ownerPassword);
+    const lineToId = String(homestay.lineToId || homestay.line_to_id || "").trim();
     localSaveHomestayPassword(slug, ownerPassword);
+    settings = {
+      ...settings,
+      lineToId: { label: "Owner LINE_TO_ID", value: lineToId }
+    };
+    localSaveSettings(settings);
     return {
       ok: true,
       data: {
@@ -1396,6 +1525,7 @@ async function localApiRequest(payload) {
         slug,
         name,
         ownerPassword,
+        lineToId,
         ownerUrl: `owner.html?homestay=${encodeURIComponent(slug)}`,
         customerUrl: `customer.html?homestay=${encodeURIComponent(slug)}`
       },
@@ -1417,12 +1547,35 @@ async function localApiRequest(payload) {
         planType,
         plan: { plan_type: planType, credits },
         ownerPassword: localGetHomestayPassword(slug),
+        lineToId: settings.lineToId?.value || "",
         ownerUrl: `owner.html?homestay=${encodeURIComponent(slug)}`,
         customerUrl: `customer.html?homestay=${encodeURIComponent(slug)}`
       }],
       count: 1,
       mode: "local"
     };
+  }
+
+  if (payload.action === "adminGetBookingConfig") {
+    return {
+      ok: true,
+      data: normalizeSettings({
+        bookingFee: settings.bookingFee,
+        creditPerBooking: settings.creditPerBooking
+      }),
+      mode: "local"
+    };
+  }
+
+  if (payload.action === "adminUpdateGlobalBookingConfig") {
+    const incomingSettings = normalizeSettings(payload.settings || {});
+    settings = {
+      ...settings,
+      bookingFee: incomingSettings.bookingFee,
+      creditPerBooking: incomingSettings.creditPerBooking
+    };
+    localSaveSettings(settings);
+    return { ok: true, data: normalizeSettings(settings), mode: "local" };
   }
 
   if (payload.action === "adminUpdateHomestayPlan") {
@@ -1437,6 +1590,17 @@ async function localApiRequest(payload) {
     const ownerPassword = normalizeOwnerPassword(payload.ownerPassword);
     localSaveHomestayPassword(slug, ownerPassword);
     return { ok: true, data: { id: slug, slug, ownerPassword }, mode: "local" };
+  }
+
+  if (payload.action === "adminUpdateHomestayLineToId") {
+    const slug = payload.homestayId || (typeof getCurrentHomestaySlug === "function" ? getCurrentHomestaySlug() : "homestay");
+    const lineToId = String(payload.lineToId || "").trim();
+    settings = {
+      ...settings,
+      lineToId: { label: "Owner LINE_TO_ID", value: lineToId }
+    };
+    localSaveSettings(settings);
+    return { ok: true, data: { id: slug, slug, lineToId }, mode: "local" };
   }
 
   if (payload.action === "adminDeleteHomestay") {
@@ -1514,12 +1678,21 @@ async function localApiRequest(payload) {
     };
     bookings.unshift(booking);
     localSaveBookings(bookings);
+    queueLineBookingNotification(booking, { slug: typeof getCurrentHomestaySlug === "function" ? getCurrentHomestaySlug() : "homestay" });
     return { ok: true, data: booking, mode: "local" };
   }
 
   if (payload.action === "updateStatus") {
     bookings = bookings.map(booking =>
-      booking.id === payload.id ? { ...booking, status: payload.status } : booking
+      booking.id === payload.id
+        ? {
+            ...booking,
+            status: payload.status,
+            paymentStatus: payload.status === "ชำระแล้ว" || payload.status === "ยืนยันแล้ว"
+              ? "ชำระแล้ว"
+              : (payload.status === "ยกเลิก" ? "ยกเลิก" : booking.paymentStatus)
+          }
+        : booking
     );
     localSaveBookings(bookings);
     return { ok: true, mode: "local" };
@@ -1581,7 +1754,11 @@ function normalizeSettings(settings) {
   if (extraBed) merged.extraBed.label = extraBed.name;
   merged.bookingFee = {
     label: merged.bookingFee?.label || "ค่าจอง",
-    value: Math.max(0, Number(typeof BOOKING_FEE !== "undefined" ? BOOKING_FEE : 20))
+    value: getSettingsBookingFee(merged)
+  };
+  merged.creditPerBooking = {
+    label: merged.creditPerBooking?.label || "เครดิตที่ใช้ต่อการจอง",
+    value: getSettingsCreditPerBooking(merged)
   };
   merged.heroContent = normalizeHeroContent(merged.heroContent || {});
   return merged;

@@ -131,7 +131,7 @@
     }
   </style>
 </head>
-<body data-page-title-suffix="Admin">
+<body class="login-hidden" data-page-title-suffix="Admin">
   <header class="topbar">
     <a class="brand" href="owner.html">
       <div>
@@ -159,6 +159,28 @@
 
     <!-- Dashboard -->
     <section class="hidden" id="adminDashboard">
+      <div class="admin-dashboard-actions">
+        <button type="button" class="ghost-btn" id="refreshAllAdminBtn">รีเฟรชข้อมูลทั้งหมด</button>
+      </div>
+
+      <div class="admin-card" style="margin-bottom:1.5rem">
+        <div class="section-mini-head">
+          <h4>ตั้งค่าการจองทุกโฮมสเตย์</h4>
+          <p>กำหนดค่าจองที่ลูกค้าชำระ และเครดิตที่ Owner ใช้ต่อการจอง 1 ครั้ง โดยใช้เหมือนกันทุกโฮมสเตย์</p>
+        </div>
+        <form class="settings-form" id="adminBookingConfigForm">
+          <div class="field">
+            <label>ค่าจอง / ครั้ง</label>
+            <input type="number" id="adminBookingFeeInput" min="0" step="1" />
+          </div>
+          <div class="field">
+            <label>เครดิตที่ใช้ / การจอง</label>
+            <input type="number" id="adminCreditPerBookingInput" min="0" step="1" />
+          </div>
+          <button type="submit">บันทึกใช้กับทุกโฮมสเตย์</button>
+        </form>
+      </div>
+
       <div class="admin-card" style="margin-bottom:1.5rem">
         <div class="section-mini-head">
           <h4>เพิ่มโฮมสเตย์</h4>
@@ -178,6 +200,11 @@
             <label>Owner password</label>
             <input type="text" id="adminHomestayOwnerPassword" placeholder="Owner password" />
             <small class="input-hint">Owner login password. Blank uses 1234.</small>
+          </div>
+          <div class="field">
+            <label>Owner LINE_TO_ID</label>
+            <input type="text" id="adminHomestayLineToId" placeholder="userId หรือ groupId ของ Owner" />
+            <small class="input-hint">ใช้ส่งแจ้งเตือน LINE เมื่อมีลูกค้าจองโฮมสเตย์นี้</small>
           </div>
           <div class="field">
             <label>Owner page URL</label>
@@ -273,6 +300,34 @@
         </div>
       </div>
 
+      <div class="admin-card" style="margin-bottom:1.5rem" id="topupHistoryCard">
+        <div class="section-mini-head">
+          <h4>ประวัติการเติมเครดิต Owner</h4>
+          <p>ดูย้อนหลังและกรองคำขอเติมเครดิตทั้งหมดของ Owner</p>
+        </div>
+        <div class="topup-history-filters">
+          <select id="topupHistoryStatusFilter" aria-label="กรองสถานะ">
+            <option value="all">ทุกสถานะ</option>
+            <option value="pending">รออนุมัติ</option>
+            <option value="approved">อนุมัติแล้ว</option>
+            <option value="done">สำเร็จแล้ว</option>
+            <option value="rejected">ปฏิเสธ</option>
+          </select>
+          <select id="topupHistoryTypeFilter" aria-label="กรองประเภท">
+            <option value="all">ทุกประเภท</option>
+            <option value="credit">เครดิต</option>
+            <option value="yearly">รายปี</option>
+          </select>
+          <select id="topupHistoryHomestayFilter" aria-label="Filter homestay">
+            <option value="all">ทุกโฮมสเตย์</option>
+          </select>
+          <input type="search" id="topupHistorySearch" placeholder="ค้นหารหัส / โฮมสเตย์ / แพ็กเกจ / ชื่อไฟล์" />
+        </div>
+        <div id="topupHistoryList">
+          <div class="empty">ยังไม่มีประวัติการเติมเครดิต</div>
+        </div>
+      </div>
+
       <!-- Danger Zone -->
       <div class="admin-card hidden">
         <div class="section-mini-head">
@@ -292,10 +347,14 @@
     let selectedPlanType = "";
     let selectedCreditPkg = null;
     let adminSettings = normalizeSettings(DEFAULT_SETTINGS);
+    const adminBookingConfigForm = document.getElementById("adminBookingConfigForm");
+    const adminBookingFeeInput = document.getElementById("adminBookingFeeInput");
+    const adminCreditPerBookingInput = document.getElementById("adminCreditPerBookingInput");
     const adminHomestayForm = document.getElementById("adminHomestayForm");
     const adminHomestayName = document.getElementById("adminHomestayName");
     const adminHomestaySlug = document.getElementById("adminHomestaySlug");
     const adminHomestayOwnerPassword = document.getElementById("adminHomestayOwnerPassword");
+    const adminHomestayLineToId = document.getElementById("adminHomestayLineToId");
     const adminHomestayPageUrl = document.getElementById("adminHomestayPageUrl");
     const adminHomestayGpsUrl = document.getElementById("adminHomestayGpsUrl");
     const adminHomestayResult = document.getElementById("adminHomestayResult");
@@ -303,6 +362,12 @@
     const adminHomestayCount = document.getElementById("adminHomestayCount");
     const adminTotalCredits = document.getElementById("adminTotalCredits");
     const refreshHomestaysBtn = document.getElementById("refreshHomestaysBtn");
+    const refreshAllAdminBtn = document.getElementById("refreshAllAdminBtn");
+    const topupHistoryStatusFilter = document.getElementById("topupHistoryStatusFilter");
+    const topupHistoryTypeFilter = document.getElementById("topupHistoryTypeFilter");
+    const topupHistoryHomestayFilter = document.getElementById("topupHistoryHomestayFilter");
+    const topupHistorySearch = document.getElementById("topupHistorySearch");
+    const topupHistoryList = document.getElementById("topupHistoryList");
     let adminHomestays = [];
 
     function renderCoPkgGrid() {
@@ -354,6 +419,7 @@
       if (!adminHomestayResult) return;
       const slug = homestay.slug || "-";
       const ownerPassword = homestay.ownerPassword || homestay.owner_password || (typeof OWNER_PASSWORD !== "undefined" ? OWNER_PASSWORD : "1234");
+      const lineToId = homestay.lineToId || homestay.line_to_id || "";
       const ownerUrl = homestay.ownerUrl || `owner.html?homestay=${encodeURIComponent(slug)}`;
       const customerUrl = homestay.customerUrl || `customer.html?homestay=${encodeURIComponent(slug)}`;
       const warnings = Array.isArray(homestay.warnings) ? homestay.warnings.filter(Boolean) : [];
@@ -363,6 +429,7 @@
           <b>สร้างโฮมสเตย์แล้ว: ${escapeHtml(homestay.name || slug)}</b><br>
           <span>Slug: ${escapeHtml(slug)}</span><br>
           <span>Owner password: <strong>${escapeHtml(ownerPassword)}</strong></span><br>
+          <span>LINE_TO_ID: <strong>${escapeHtml(lineToId || "-")}</strong></span><br>
           <a href="${escapeHtml(ownerUrl)}" target="_blank" rel="noopener">เปิดหน้า Owner</a><br>
           <a href="${escapeHtml(customerUrl)}" target="_blank" rel="noopener">เปิดหน้า Customer</a>
         </div>
@@ -432,6 +499,7 @@
         const name = escapeHtml(homestay.name || homestay.slug || "Homestay");
         const credits = Number(homestay.credits ?? homestay.plan?.credits ?? 0);
         const ownerPassword = homestay.ownerPassword || homestay.owner_password || (typeof OWNER_PASSWORD !== "undefined" ? OWNER_PASSWORD : "1234");
+        const lineToId = homestay.lineToId || homestay.line_to_id || "";
         const ownerUrl = escapeHtml(homestay.ownerUrl || `owner.html?homestay=${encodeURIComponent(homestay.slug || "")}`);
         const customerUrl = escapeHtml(homestay.customerUrl || `customer.html?homestay=${encodeURIComponent(homestay.slug || "")}`);
         const status = getAdminHomestayStatus(homestay);
@@ -450,6 +518,10 @@
                   <span>Owner password</span>
                   <strong>${escapeHtml(ownerPassword)}</strong>
                 </div>
+                <div class="admin-owner-password-row">
+                  <span>LINE_TO_ID</span>
+                  <strong>${escapeHtml(lineToId || "-")}</strong>
+                </div>
                 <div class="admin-homestay-links">
                   <a href="${ownerUrl}" target="_blank" rel="noopener">Owner</a>
                   <a href="${customerUrl}" target="_blank" rel="noopener">Customer</a>
@@ -460,6 +532,8 @@
             <div class="admin-homestay-actions">
               <input type="text" value="${escapeHtml(ownerPassword)}" data-role="ownerPassword" aria-label="Owner password" />
               <button type="button" class="admin-save-password" data-action="saveOwnerPassword">Save password</button>
+              <input type="text" value="${escapeHtml(lineToId)}" data-role="lineToId" aria-label="Owner LINE_TO_ID" placeholder="Owner LINE_TO_ID" />
+              <button type="button" class="admin-save-password" data-action="saveLineToId">Save LINE</button>
               <input type="number" min="1" step="1" value="10" data-role="creditAmount" aria-label="จำนวนเครดิต" />
               <button type="button" class="admin-add-credit" data-action="addCredits">เติมเครดิต</button>
               <button type="button" class="admin-remove-credit" data-action="removeCredits">ลบเครดิต</button>
@@ -562,6 +636,29 @@
       }
     }
 
+    async function updateHomestayLineToId(homestayId) {
+      const homestay = getAdminHomestayById(homestayId);
+      if (!homestay) return;
+      const card = Array.from(adminHomestayList?.querySelectorAll("[data-homestay-id]") || [])
+        .find(item => String(item.dataset.homestayId) === String(homestayId));
+      const lineInput = card?.querySelector('[data-role="lineToId"]');
+      const lineToId = String(lineInput?.value || "").trim();
+
+      try {
+        const result = await apiRequest({
+          action: "adminUpdateHomestayLineToId",
+          homestayId,
+          lineToId
+        });
+        if (!result.ok) throw new Error(result.message || "Save LINE_TO_ID failed");
+        showToast("LINE_TO_ID saved");
+        await loadAdminHomestays();
+      } catch (error) {
+        console.error(error);
+        showToast(`Save LINE_TO_ID failed: ${error.message || "Unknown error"}`);
+      }
+    }
+
     function handleAdminHomestayAction(event) {
       const button = event.target.closest("[data-action]");
       if (!button) return;
@@ -572,6 +669,7 @@
       if (button.dataset.action === "addCredits") updateHomestayCredits(homestayId, 1);
       if (button.dataset.action === "removeCredits") updateHomestayCredits(homestayId, -1);
       if (button.dataset.action === "saveOwnerPassword") updateOwnerPassword(homestayId);
+      if (button.dataset.action === "saveLineToId") updateHomestayLineToId(homestayId);
       if (button.dataset.action === "deleteHomestay") deleteAdminHomestay(homestayId);
     }
 
@@ -591,6 +689,7 @@
             name,
             slug,
             ownerPassword: adminHomestayOwnerPassword?.value.trim() || "",
+            lineToId: adminHomestayLineToId?.value.trim() || "",
             pageUrl: adminHomestayPageUrl?.value.trim() || "",
             gpsUrl: adminHomestayGpsUrl?.value.trim() || ""
           }
@@ -618,14 +717,19 @@
       document.title = "Admin";
     }
 
+    function renderAdminBookingConfigForm() {
+      if (adminBookingFeeInput) adminBookingFeeInput.value = getSettingsBookingFee(adminSettings);
+      if (adminCreditPerBookingInput) adminCreditPerBookingInput.value = getSettingsCreditPerBooking(adminSettings);
+    }
+
     async function loadAdminBrandAssets() {
       try {
-        const result = await apiRequest({ action: "bootstrap" });
+        const result = await apiRequest({ action: "adminGetBookingConfig" });
         const payload = result.data || result;
         const loadedSettings = normalizeSettings(payload.settings || result.settings || payload.data || {});
         adminSettings = loadedSettings;
-        applyBrandAssets(adminSettings);
         renderAdminTopbarTitle();
+        renderAdminBookingConfigForm();
         renderCurrentStatus();
       } catch (error) {
         console.warn("Admin plan sync failed; clearing stale local credits:", error?.message);
@@ -633,7 +737,30 @@
         adminSettings = normalizeSettings(typeof localGetSettings === "function" ? localGetSettings() : DEFAULT_SETTINGS);
         applyBrandAssets(adminSettings);
         renderAdminTopbarTitle();
+        renderAdminBookingConfigForm();
         renderCurrentStatus();
+      }
+    }
+
+    async function saveAdminBookingConfig(event) {
+      event.preventDefault();
+      const bookingFee = Math.max(0, Number(adminBookingFeeInput?.value || 0));
+      const creditPerBooking = Math.max(0, Number(adminCreditPerBookingInput?.value || 0));
+      const nextSettings = normalizeSettings({
+        ...adminSettings,
+        bookingFee: { label: "ค่าจอง", value: bookingFee },
+        creditPerBooking: { label: "เครดิตที่ใช้ต่อการจอง", value: creditPerBooking }
+      });
+
+      try {
+        const result = await apiRequest({ action: "adminUpdateGlobalBookingConfig", settings: nextSettings });
+        if (!result.ok) throw new Error(result.message || "บันทึกตั้งค่าการจองไม่สำเร็จ");
+        adminSettings = normalizeSettings(result.data || nextSettings);
+        renderAdminBookingConfigForm();
+        showToast("บันทึกตั้งค่าการจองให้ทุกโฮมสเตย์แล้ว");
+      } catch (error) {
+        console.error(error);
+        showToast(`บันทึกตั้งค่าการจองไม่สำเร็จ: ${error.message || "ไม่ทราบสาเหตุ"}`);
       }
     }
 
@@ -717,7 +844,25 @@
       const type = getPlanType();
       if (type) selectPlan(type);
       renderPendingRequests();
+      renderTopupHistory();
       renderCoPkgGrid();
+    }
+
+    async function refreshAllAdminData() {
+      try {
+        showToast("กำลังรีเฟรชข้อมูลทั้งหมด...");
+        await Promise.all([
+          loadAdminBrandAssets(),
+          loadAdminHomestays()
+        ]);
+        renderPendingRequests();
+        renderTopupHistory();
+        renderCurrentStatus();
+        showToast("รีเฟรชข้อมูลทั้งหมดแล้ว");
+      } catch (error) {
+        console.error(error);
+        showToast(`รีเฟรชข้อมูลไม่สำเร็จ: ${error.message || "ไม่ทราบสาเหตุ"}`);
+      }
     }
 
     function getTopupRequests() {
@@ -727,12 +872,192 @@
       localStorage.setItem("hs_topup_requests", JSON.stringify(arr));
     }
 
+    function formatTopupStatusLabel(status) {
+      if (status === "pending") return "รออนุมัติ";
+      if (status === "approved") return "อนุมัติแล้ว";
+      if (status === "done") return "สำเร็จแล้ว";
+      if (status === "rejected") return "ปฏิเสธ";
+      return status || "-";
+    }
+
+    function formatTopupTypeLabel(req) {
+      return req.type === "yearly" ? "รายปี" : "เครดิต";
+    }
+
+    function getTopupHomestayName(req = {}) {
+      return String(req.homestayName || req.siteName || req.ownerName || req.homestaySlug || "ไม่ระบุโฮมสเตย์").trim();
+    }
+
+    function getTopupHomestaySlug(req = {}) {
+      return String(req.homestaySlug || req.slug || "").trim();
+    }
+
+    function getTopupHomestayKey(req = {}) {
+      return String(getTopupHomestaySlug(req) || getTopupHomestayName(req)).toLowerCase();
+    }
+
+    function formatTopupHomestayLabel(req = {}) {
+      const name = getTopupHomestayName(req);
+      const slug = getTopupHomestaySlug(req);
+      return slug && slug !== name ? `${name} (${slug})` : name;
+    }
+
+    function renderTopupHomestayFilterOptions() {
+      if (!topupHistoryHomestayFilter) return;
+      const current = topupHistoryHomestayFilter.value || "all";
+      const options = new Map();
+      getTopupRequests().forEach(req => {
+        const key = getTopupHomestayKey(req);
+        if (!key) return;
+        options.set(key, formatTopupHomestayLabel(req));
+      });
+      topupHistoryHomestayFilter.innerHTML = `<option value="all">ทุกโฮมสเตย์</option>` +
+        Array.from(options.entries())
+          .sort((a, b) => a[1].localeCompare(b[1], "th"))
+          .map(([key, label]) => `<option value="${escapeHtml(key)}">${escapeHtml(label)}</option>`)
+          .join("");
+      topupHistoryHomestayFilter.value = options.has(current) ? current : "all";
+    }
+
+    function formatTopupCredits(req) {
+      return req.type === "yearly" ? "รายปี" : `${Number(req.credits || 0).toLocaleString("th-TH")} เครดิต`;
+    }
+
+    function formatTopupDate(value) {
+      if (!value) return "-";
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString("th-TH");
+    }
+
+    function topupHistoryMatches(req) {
+      const statusFilter = topupHistoryStatusFilter?.value || "all";
+      const typeFilter = topupHistoryTypeFilter?.value || "all";
+      const homestayFilter = topupHistoryHomestayFilter?.value || "all";
+      const search = String(topupHistorySearch?.value || "").trim().toLowerCase();
+
+      if (statusFilter !== "all" && req.status !== statusFilter) return false;
+      if (typeFilter !== "all" && req.type !== typeFilter) return false;
+      if (homestayFilter !== "all" && getTopupHomestayKey(req) !== homestayFilter) return false;
+      if (!search) return true;
+
+      return [
+        req.id,
+        getTopupHomestayName(req),
+        getTopupHomestaySlug(req),
+        req.label,
+        req.slipFilename,
+        req.status,
+        req.type,
+        req.credits,
+        req.price
+      ].some(value => String(value || "").toLowerCase().includes(search));
+    }
+
+    function renderTopupHistory() {
+      if (!topupHistoryList) return;
+      renderTopupHomestayFilterOptions();
+      const items = getTopupRequests()
+        .filter(topupHistoryMatches)
+        .sort((a, b) => new Date(b.approvedAt || b.requestedAt || 0) - new Date(a.approvedAt || a.requestedAt || 0));
+
+      if (!items.length) {
+        topupHistoryList.innerHTML = `<div class="empty">ไม่พบประวัติตามตัวกรอง</div>`;
+        return;
+      }
+
+      topupHistoryList.innerHTML = items.map(req => {
+        const requestedAt = formatTopupDate(req.requestedAt);
+        const homestayLabel = formatTopupHomestayLabel(req);
+        const approvedAt = req.approvedAt ? formatTopupDate(req.approvedAt) : "-";
+        const doneAt = req.doneAt ? formatTopupDate(req.doneAt) : "-";
+        const rejectedAt = req.rejectedAt ? `<div><span>ปฏิเสธ:</span><strong>${formatTopupDate(req.rejectedAt)}</strong></div>` : "";
+        const slipActionsHtml = req.slipBase64
+          ? `<div class="topup-history-actions">
+              <button type="button" class="history-slip-btn" onclick="openTopupHistorySlip('${req.id}')">ดูสลิป</button>
+            </div>`
+          : `<span class="history-muted">ไม่มีสลิป</span>`;
+
+        return `
+          <div class="topup-history-item req-${req.status || "pending"}">
+            <div class="topup-history-main">
+              <div>
+                <strong>${escapeHtml(req.id || "-")}</strong>
+                <span>โฮมสเตย์: ${escapeHtml(homestayLabel)}</span>
+                <span>${escapeHtml(req.label || "-")} • ${escapeHtml(formatTopupCredits(req))} • ฿${Number(req.price || 0).toLocaleString("th-TH")}</span>
+              </div>
+              <b>${escapeHtml(formatTopupStatusLabel(req.status))}</b>
+            </div>
+            <div class="topup-history-detail-list">
+              <div><span>ประเภท:</span><strong>${escapeHtml(formatTopupTypeLabel(req))}</strong></div>
+              <div><span>ขอเมื่อ:</span><strong>${escapeHtml(requestedAt)}</strong></div>
+              <div><span>อนุมัติ:</span><strong>${escapeHtml(approvedAt)}</strong></div>
+              <div><span>สำเร็จ:</span><strong>${escapeHtml(doneAt)}</strong></div>
+              ${rejectedAt}
+              <div><span>ไฟล์:</span><strong>${escapeHtml(req.slipFilename || "-")}</strong></div>
+            </div>
+            <div class="topup-history-slip-tools">
+              ${slipActionsHtml}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function openTopupHistorySlip(id) {
+      const req = getTopupRequests().find(item => item.id === id);
+      if (!req?.slipBase64) return;
+      const src = `data:${req.slipMime || "image/png"};base64,${req.slipBase64}`;
+      let modal = document.getElementById("topupSlipPopup");
+      if (!modal) {
+        modal = document.createElement("div");
+        modal.id = "topupSlipPopup";
+        modal.className = "modal-overlay slip-image-popup hidden";
+        modal.innerHTML = `
+          <div class="slip-image-popup-card">
+            <button type="button" class="modal-close-btn slip-image-close" onclick="closeTopupSlipPopup()" aria-label="ปิด">✕</button>
+            <div class="topup-slip-popup-title" id="topupSlipPopupTitle"></div>
+            <img id="topupSlipPopupImg" alt="สลิปเติมเครดิต" />
+            <iframe id="topupSlipPopupFrame" title="สลิปเติมเครดิต"></iframe>
+          </div>
+        `;
+        modal.addEventListener("click", event => {
+          if (event.target.id === "topupSlipPopup") closeTopupSlipPopup();
+        });
+        document.body.appendChild(modal);
+      }
+      const img = document.getElementById("topupSlipPopupImg");
+      const frame = document.getElementById("topupSlipPopupFrame");
+      const title = document.getElementById("topupSlipPopupTitle");
+      const isPdf = String(req.slipMime || "").toLowerCase() === "application/pdf";
+      if (title) title.textContent = `${req.id || "สลิป"} - ${formatTopupHomestayLabel(req)}`;
+      if (img) {
+        img.src = isPdf ? "" : src;
+        img.style.display = isPdf ? "none" : "block";
+      }
+      if (frame) {
+        frame.src = isPdf ? src : "";
+        frame.style.display = isPdf ? "block" : "none";
+      }
+      modal.classList.remove("hidden");
+      document.body.classList.add("modal-open");
+    }
+
+    function closeTopupSlipPopup() {
+      const modal = document.getElementById("topupSlipPopup");
+      const img = document.getElementById("topupSlipPopupImg");
+      const frame = document.getElementById("topupSlipPopupFrame");
+      if (modal) modal.classList.add("hidden");
+      if (img) img.src = "";
+      if (frame) frame.src = "";
+      document.body.classList.remove("modal-open");
+    }
+
     function renderPendingRequests() {
       const reqs = getTopupRequests();
       const list = document.getElementById("pendingRequestsList");
       if (!list) return;
 
-      const pending = reqs.filter(r => r.status === "pending" || r.status === "approved" || r.status === "rejected");
+      const pending = reqs.filter(r => r.status === "pending");
       if (!pending.length) {
         list.innerHTML = `<div class="empty">ไม่มีคำขอที่รอดำเนินการ</div>`;
         return;
@@ -740,6 +1065,7 @@
 
       list.innerHTML = pending.slice().reverse().map(req => {
         const date = new Date(req.requestedAt).toLocaleString("th-TH");
+        const homestayLabel = formatTopupHomestayLabel(req);
         const statusLabel = req.status === "pending" ? "🟡 รอการอนุมัติ" : req.status === "approved" ? "✅ อนุมัติแล้ว" : "❌ ปฏิเสธ";
         const slipHtml = req.slipBase64
           ? `<div class="request-slip">
@@ -757,6 +1083,7 @@
         return `<div class="request-item req-${req.status}">
           <div class="request-meta">
             <span>รหัส: <strong>${req.id}</strong></span>
+            <span>โฮมสเตย์: <strong>${escapeHtml(homestayLabel)}</strong></span>
             <span>แพ็กเกจ: <strong>${req.label} (${req.type === 'yearly' ? 'รายปี' : req.credits + ' เครดิต'} / ฿${req.price.toLocaleString()})</strong></span>
             <span>วันที่: <strong>${date}</strong></span>
           </div>
@@ -776,6 +1103,7 @@
       const desc = req.type === "yearly" ? "แพ็กเกจรายปี" : req.credits + " เครดิต";
       showToast(`✅ อนุมัติ ${desc} ให้ Owner แล้ว`);
       renderPendingRequests();
+      renderTopupHistory();
       renderCurrentStatus();
     }
 
@@ -785,29 +1113,37 @@
       const req = reqs.find(r => r.id === id);
       if (!req) return;
       req.status = "rejected";
+      req.rejectedAt = new Date().toISOString();
       saveTopupRequests(reqs);
       showToast("ปฏิเสธคำขอแล้ว");
       renderPendingRequests();
+      renderTopupHistory();
     }
 
     // Poll ทุก 5 วินาทีเพื่ออัปเดต pending list
     setInterval(() => {
       if (!document.getElementById("adminDashboard").classList.contains("hidden")) {
         renderPendingRequests();
+        renderTopupHistory();
       }
     }, 5000);
 
     // Login
-    function setAdminLoginState(isLogin) {
-      document.body.classList.toggle('login-hidden', isLogin);
-      document.getElementById("adminLoginBox").classList.toggle("hidden", !isLogin);
-      document.getElementById("adminDashboard").classList.toggle("hidden", isLogin);
+    function setAdminLoginState(showLogin) {
+      document.body.classList.toggle("login-hidden", showLogin);
+      document.getElementById("adminLoginBox").classList.toggle("hidden", !showLogin);
+      document.getElementById("adminDashboard").classList.toggle("hidden", showLogin);
     }
 
-    document.getElementById("adminLoginBtn").addEventListener("click", () => {
-      const pw = document.getElementById("adminPassword").value;
-      if (pw === ADMIN_PASSWORD) {
+    document.getElementById("adminLoginBtn").addEventListener("click", async () => {
+      const pw = String(document.getElementById("adminPassword").value || "").trim();
+      const adminPassword = String(typeof ADMIN_PASSWORD !== "undefined" ? ADMIN_PASSWORD : "1234").trim();
+      if (pw === adminPassword) {
         setAdminLoginState(false);
+        await Promise.allSettled([
+          loadAdminBrandAssets(),
+          loadAdminHomestays()
+        ]);
         renderCurrentStatus();
         showToast("เข้าสู่ระบบ Admin สำเร็จ");
       } else {
@@ -825,8 +1161,14 @@
     });
 
     adminHomestayForm?.addEventListener("submit", createAdminHomestay);
+    adminBookingConfigForm?.addEventListener("submit", saveAdminBookingConfig);
     adminHomestayList?.addEventListener("click", handleAdminHomestayAction);
     refreshHomestaysBtn?.addEventListener("click", loadAdminHomestays);
+    refreshAllAdminBtn?.addEventListener("click", refreshAllAdminData);
+    topupHistoryStatusFilter?.addEventListener("change", renderTopupHistory);
+    topupHistoryTypeFilter?.addEventListener("change", renderTopupHistory);
+    topupHistoryHomestayFilter?.addEventListener("change", renderTopupHistory);
+    topupHistorySearch?.addEventListener("input", renderTopupHistory);
     adminHomestayName?.addEventListener("input", () => {
       if (!adminHomestaySlug || adminHomestaySlug.dataset.touched === "true") return;
       adminHomestaySlug.value = normalizeAdminSlug(adminHomestayName.value);
@@ -840,10 +1182,11 @@
     document.addEventListener('DOMContentLoaded', () => {
       setAdminLoginState(true);
       renderCoPkgGrid();
-      applyBrandAssets(normalizeSettings(typeof localGetSettings === "function" ? localGetSettings() : DEFAULT_SETTINGS));
       renderAdminTopbarTitle();
-      loadAdminBrandAssets();
-      loadAdminHomestays();
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") closeTopupSlipPopup();
     });
   </script>
 </body>

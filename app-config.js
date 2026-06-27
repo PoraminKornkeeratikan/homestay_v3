@@ -14,7 +14,8 @@ const OWNER_PASSWORD = "1234";
 
 const DEFAULT_ROOMS = [];
 
-const BOOKING_FEE = 40;
+const BOOKING_FEE = 20;
+const CREDIT_PER_BOOKING = 40;
 
 const DEFAULT_SETTINGS = {
   siteName: { label: "ชื่อเว็บไซต์", value: "" },
@@ -33,6 +34,7 @@ const DEFAULT_SETTINGS = {
   gpsUrl: { label: "ลิงก์ GPS", value: "" },
   qrCodeUrl: { label: "QR-code ชำระเงิน", value: "" },
   bookingFee: { label: "ค่าจอง", value: BOOKING_FEE },
+  creditPerBooking: { label: "เครดิตที่ใช้ต่อการจอง", value: CREDIT_PER_BOOKING },
   paymentNote: { label: "หมายเหตุชำระเงิน", value: "โอนแล้วส่งสลิปให้แอดมินเพื่อยืนยันการจอง" },
   heroContent: {
     label: "Hero content",
@@ -52,7 +54,6 @@ const DEFAULT_SETTINGS = {
 };
 
 // ======= CREDIT SYSTEM =======
-const CREDIT_PER_BOOKING = 40;   // เครดิตที่ใช้ต่อการจอง 1 ครั้ง
 const ADMIN_PASSWORD = "1234"; // รหัสผ่านหน้า admin
 
 const TOPUP_PAYMENT_SETTINGS = {

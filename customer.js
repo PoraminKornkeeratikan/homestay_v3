@@ -818,7 +818,7 @@ function getSummary() {
   const extraBedQty = Number(selectedExtraBed?.qty || 0);
   const extraBedTotal = Number(selectedExtraBed?.total || 0);
   const addonTotal = addonItems.reduce((sum, item) => sum + Number(item.total || 0), 0);
-  const bookingFee = Math.max(0, Number(typeof BOOKING_FEE !== "undefined" ? BOOKING_FEE : 20));
+  const bookingFee = getSettingsBookingFee(settings);
   const grandTotal = roomTotal + addonTotal + bookingFee;
 
   return {
@@ -1109,10 +1109,11 @@ async function confirmSendBooking() {
 
     // ถ้า precheckSlip ไม่พร้อม (local mode หรือ Edge Function ยังไม่ตั้งค่า) ให้ข้ามได้
     if (verified.ok && verified.data) {
+      const slipPassed = verified.data.passed === true || verified.data.slipVerifyStatus === "passed";
       pendingBooking = {
         ...pendingBooking,
-        paymentStatus: verified.data.paymentStatus || "รอชำระเงิน",
-        status: verified.data.status || "รอชำระเงิน",
+        paymentStatus: slipPassed ? (verified.data.paymentStatus || "ชำระแล้ว") : "รอตรวจสอบสลิป",
+        status: slipPassed ? (verified.data.status || "ชำระแล้ว") : "รอยืนยัน",
         slipVerifyStatus: verified.data.slipVerifyStatus || "not_checked",
         slipVerifyMessage: verified.data.slipVerifyMessage || verified.data.message || "",
         slipVerifiedAt: verified.data.slipVerifiedAt || new Date().toISOString(),
@@ -1135,7 +1136,7 @@ async function confirmSendBooking() {
 
     // หักเครดิต
     if (result.mode !== "supabase" && (getPlanType() === "credit" || getPlanType() === "")) {
-      setCredits(getCredits() - CREDIT_PER_BOOKING);
+      setCredits(getCredits() - getSettingsCreditPerBooking(settings));
     }
 
     bookingConfirmModal.classList.add("hidden");
