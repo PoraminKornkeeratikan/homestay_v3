@@ -15,6 +15,173 @@
   --shadow: 0 20px 60px rgba(15, 61, 46, 0.12);
 }
 
+.admin-homestay-head {
+  align-items: center;
+}
+
+.admin-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 28px;
+  padding: 0 10px;
+  margin-left: 8px;
+  border-radius: 999px;
+  background: var(--green-100);
+  color: var(--green-800);
+  font-size: 15px;
+}
+
+.admin-total-credit {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.admin-total-credit strong {
+  color: var(--green-900);
+}
+
+.admin-homestay-list {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-homestay-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.admin-homestay-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.admin-homestay-main h5 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--green-900);
+}
+
+.admin-homestay-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 4px;
+}
+
+.admin-status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.admin-status-badge.is-active {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.admin-status-badge.is-inactive {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.admin-homestay-meta {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.admin-homestay-links {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.admin-homestay-links a {
+  color: var(--green-800);
+  font-weight: 700;
+}
+
+.admin-credit-pill {
+  flex: 0 0 auto;
+  padding: 9px 12px;
+  border-radius: 999px;
+  background: var(--green-800);
+  color: white;
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.admin-homestay-actions {
+  display: grid;
+  grid-template-columns: minmax(110px, 160px) repeat(3, auto);
+  gap: 8px;
+  align-items: center;
+}
+
+.admin-homestay-actions input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.admin-homestay-actions button {
+  min-height: 42px;
+  border: none;
+  border-radius: 8px;
+  padding: 0 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-add-credit {
+  background: var(--green-800);
+  color: white;
+}
+
+.admin-remove-credit {
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fed7aa !important;
+}
+
+.admin-delete-homestay {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca !important;
+}
+
+@media (max-width: 720px) {
+  .admin-homestay-main {
+    display: grid;
+  }
+
+  .admin-credit-pill {
+    width: fit-content;
+  }
+
+  .admin-homestay-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 
@@ -99,6 +266,14 @@ nav {
   font-weight: 700;
 }
 
+nav .ghost-btn {
+  border: 0;
+  background: transparent;
+  padding: 10px 16px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
 .nav-link.active {
   color: white;
   background: var(--green-800);
@@ -118,7 +293,7 @@ main {
   align-items: stretch;
 }
 
-.hero-text, .hero-card, .booking-panel, .login-card, .stat-card, .table-wrap, .admin-note, .admin-card {
+.hero-text, .hero-card, .booking-panel, .login-card, .stat-card, .table-wrap, .owner-note, .owner-card, .admin-card {
   border: 1px solid rgba(220, 235, 227, 0.92);
   background: rgba(255, 255, 255, 0.82);
   box-shadow: var(--shadow);
@@ -722,7 +897,7 @@ input:focus, select:focus, textarea:focus {
   cursor: not-allowed;
 }
 
-.admin-login {
+.owner-login {
   min-height: 520px;
   display: grid;
   place-items: center;
@@ -742,6 +917,18 @@ input:focus, select:focus, textarea:focus {
 
 .login-card p { color: var(--muted); }
 
+.login-card .owner-login-homestay {
+  margin: 8px 0 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--green-50);
+  color: var(--green-800);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 .login-card input {
   margin: 10px 0 12px;
   text-align: center;
@@ -752,7 +939,7 @@ input:focus, select:focus, textarea:focus {
 
 .dashboard-head { align-items: center; }
 
-.admin-actions {
+.owner-actions {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
@@ -768,13 +955,14 @@ input:focus, select:focus, textarea:focus {
   font-weight: 800;
 }
 
-.admin-grid {
+.owner-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 18px;
   margin-bottom: 18px;
 }
 
+.owner-card,
 .admin-card {
   border-radius: 28px;
   padding: 20px;
@@ -799,7 +987,7 @@ input:focus, select:focus, textarea:focus {
   gap: 14px;
 }
 
-.room-admin-card {
+.room-owner-card {
   display: grid;
   grid-template-columns: 180px minmax(0, 1fr);
   gap: 16px;
@@ -810,37 +998,37 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 10px 26px rgba(15, 61, 46, .06);
 }
 
-.room-admin-card.is-closed {
+.room-owner-card.is-closed {
   background: linear-gradient(135deg, #fff, #fff7f7);
 }
 
-.room-admin-media .room-thumb {
+.room-owner-media .room-thumb {
   width: 100%;
   height: 156px;
   border-radius: 14px;
 }
 
-.room-admin-main {
+.room-owner-main {
   min-width: 0;
   display: grid;
   gap: 12px;
 }
 
-.room-admin-top {
+.room-owner-top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
 
-.room-admin-title {
+.room-owner-title {
   min-width: 0;
   display: grid;
   gap: 5px;
 }
 
-.room-admin-title span,
-.room-admin-field > span {
+.room-owner-title span,
+.room-owner-field > span {
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
@@ -853,24 +1041,24 @@ input:focus, select:focus, textarea:focus {
   color: var(--green-900);
 }
 
-.room-admin-fields {
+.room-owner-fields {
   display: grid;
   grid-template-columns: 150px minmax(260px, 1fr) 220px;
   gap: 12px;
   align-items: start;
 }
 
-.room-admin-field {
+.room-owner-field {
   display: grid;
   gap: 6px;
 }
 
-.room-admin-field .inline-input {
+.room-owner-field .inline-input {
   width: 100%;
   min-width: 0;
 }
 
-.room-admin-field textarea.inline-input {
+.room-owner-field textarea.inline-input {
   min-height: 104px;
   resize: vertical;
 }
@@ -1121,16 +1309,14 @@ table {
 }
 
 .booking-detail-table {
-  min-width: 1120px;
+  min-width: 980px;
 }
 
-.booking-detail-table th:nth-child(1) { width: 22%; }
-.booking-detail-table th:nth-child(2) { width: 21%; }
-.booking-detail-table th:nth-child(3) { width: 16%; }
-.booking-detail-table th:nth-child(4) { width: 17%; }
+.booking-detail-table th:nth-child(1) { width: 25%; }
+.booking-detail-table th:nth-child(2) { width: 34%; }
+.booking-detail-table th:nth-child(3) { width: 21%; }
+.booking-detail-table th:nth-child(4) { width: 10%; }
 .booking-detail-table th:nth-child(5) { width: 10%; }
-.booking-detail-table th:nth-child(6) { width: 8%; }
-.booking-detail-table th:nth-child(7) { width: 6%; }
 
 th, td {
   padding: 16px;
@@ -1266,6 +1452,58 @@ td small {
 .booking-cost-lines b {
   color: var(--green-900);
   font-size: 12px;
+}
+
+.booking-cost-lines .booking-grand-line {
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+}
+
+.booking-cost-lines .booking-grand-line b {
+  font-size: 14px;
+}
+
+.setting-addon-list {
+  display: grid;
+  gap: 10px;
+}
+
+.setting-addon-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.3fr) minmax(100px, .7fr) minmax(100px, .7fr) auto auto;
+  gap: 10px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid rgba(220, 235, 227, .9);
+  border-radius: 8px;
+  background: #f8fcfa;
+}
+
+.settings-form .field.compact {
+  margin: 0;
+}
+
+.setting-addon-active {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  color: var(--green-900);
+  font-weight: 800;
+}
+
+.setting-addon-remove,
+.setting-addon-add {
+  min-height: 42px;
+}
+
+.setting-addon-remove {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.setting-addon-add {
+  margin-top: 10px;
 }
 
 .booking-addon-tags {
@@ -1515,6 +1753,10 @@ td small {
 }
 
 @media (max-width: 760px) {
+  .setting-addon-row {
+    grid-template-columns: 1fr;
+  }
+
   .booking-detail-table {
     min-width: 0;
   }
@@ -1560,9 +1802,7 @@ td small {
 
   .booking-guest-cell::before { content: "ผู้จอง"; }
   .booking-stay-cell::before { content: "การเข้าพัก"; }
-  .booking-addon-cell::before { content: "บริการเสริม"; }
   .booking-payment-cell::before { content: "ชำระเงิน / สลิป"; }
-  .booking-total-cell::before { content: "ยอดรวม"; }
   .booking-status-cell::before { content: "สถานะ"; }
   .booking-actions-cell::before { content: "จัดการ"; }
 
@@ -1632,7 +1872,7 @@ td small {
 }
 
 @media (max-width: 980px) {
-  .hero, .room-grid, .booking-form, .stats, .tools, .addon-grid, .payment-fields, .admin-grid, .settings-form, .payment-card, .date-summary, .history-form, .history-card, .ticket-lines, .admin-calendar-layout, .date-booking-grid {
+  .hero, .room-grid, .booking-form, .stats, .tools, .addon-grid, .payment-fields, .owner-grid, .settings-form, .payment-card, .date-summary, .history-form, .history-card, .ticket-lines, .owner-calendar-layout, .date-booking-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1838,13 +2078,13 @@ td small {
 
 /* Mobile only: put selected-date details below the owner calendar. */
 @media (max-width: 760px) {
-  .admin-calendar-layout {
+  .owner-calendar-layout {
     grid-template-columns: minmax(0, 1fr) !important;
     gap: 12px;
     width: 100%;
   }
 
-  .admin-calendar-box {
+  .owner-calendar-box {
     order: 1;
     min-width: 0;
     width: 100%;
@@ -1859,25 +2099,25 @@ td small {
 
 /* Tablet owner calendar: use the same readable stacked layout as mobile. */
 @media (min-width: 700px) and (max-width: 1024px) {
-  .admin-calendar-card {
+  .owner-calendar-card {
     border-radius: 24px;
     padding: 20px;
   }
 
-  .admin-calendar-layout {
+  .owner-calendar-layout {
     grid-template-columns: minmax(0, 1fr) !important;
     gap: 16px;
     width: 100%;
   }
 
-  .admin-calendar-box,
+  .owner-calendar-box,
   .date-detail-panel {
     width: 100%;
     min-width: 0;
     border-radius: 20px;
   }
 
-  .admin-calendar-box {
+  .owner-calendar-box {
     order: 1;
   }
 
@@ -1885,7 +2125,7 @@ td small {
     order: 2;
   }
 
-  .admin-calendar-grid .calendar-day {
+  .owner-calendar-grid .calendar-day {
     min-height: 68px;
   }
 }
@@ -2646,18 +2886,18 @@ body.topup-modal-open #topupModal .topup-card {
 }
 
 
-.admin-calendar-card {
+.owner-calendar-card {
   margin-bottom: 22px;
 }
 
-.admin-calendar-layout {
+.owner-calendar-layout {
   display: grid;
   grid-template-columns: minmax(360px, 0.9fr) minmax(360px, 1.1fr);
   gap: 18px;
   align-items: start;
 }
 
-.admin-calendar-box,
+.owner-calendar-box,
 .date-detail-panel {
   border: 1px solid var(--line);
   background: white;
@@ -2665,7 +2905,7 @@ body.topup-modal-open #topupModal .topup-card {
   padding: 12px;
 }
 
-.admin-calendar-grid .calendar-day {
+.owner-calendar-grid .calendar-day {
   min-height: 74px;
   justify-content: flex-start;
   align-items: flex-start;
@@ -2674,7 +2914,7 @@ body.topup-modal-open #topupModal .topup-card {
   gap: 4px;
 }
 
-.admin-calendar-grid .calendar-day small {
+.owner-calendar-grid .calendar-day small {
   color: inherit;
   opacity: .78;
   font-size: 10px;
@@ -2682,11 +2922,11 @@ body.topup-modal-open #topupModal .topup-card {
   margin-top: auto;
 }
 
-.admin-calendar-grid .calendar-day.booked {
+.owner-calendar-grid .calendar-day.booked {
   border-color: rgba(216, 72, 72, .28);
 }
 
-.admin-calendar-grid .calendar-day.available {
+.owner-calendar-grid .calendar-day.available {
   border-color: rgba(29, 107, 80, .24);
 }
 
@@ -2828,8 +3068,8 @@ body.topup-modal-open #topupModal .topup-card {
 }
 
 
-/* Final fix: admin calendar no text overlap */
-.admin-calendar-grid .calendar-day {
+/* Final fix: owner calendar no text overlap */
+.owner-calendar-grid .calendar-day {
   display: grid !important;
   grid-template-rows: auto 1fr auto;
   align-items: start !important;
@@ -2841,18 +3081,18 @@ body.topup-modal-open #topupModal .topup-card {
   line-height: 1.15;
 }
 
-.admin-calendar-grid .calendar-day .badge {
+.owner-calendar-grid .calendar-day .badge {
   position: static !important;
 }
 
-.admin-day-number {
+.owner-day-number {
   display: block;
   color: inherit;
   font-size: 16px;
   line-height: 1;
 }
 
-.admin-day-status {
+.owner-day-status {
   display: inline-flex;
   width: fit-content;
   max-width: 100%;
@@ -2865,17 +3105,17 @@ body.topup-modal-open #topupModal .topup-card {
   margin-top: 4px;
 }
 
-.admin-calendar-grid .calendar-day.available .admin-day-status {
+.owner-calendar-grid .calendar-day.available .owner-day-status {
   background: rgba(29, 107, 80, 0.13);
   color: #12643f;
 }
 
-.admin-calendar-grid .calendar-day.booked .admin-day-status {
+.owner-calendar-grid .calendar-day.booked .owner-day-status {
   background: rgba(216, 72, 72, 0.12);
   color: #c43d3d;
 }
 
-.admin-day-room {
+.owner-day-room {
   display: block !important;
   color: inherit !important;
   opacity: .82;
@@ -2907,17 +3147,17 @@ body.topup-modal-open #topupModal .topup-card {
 }
 
 @media (max-width: 560px) {
-  .admin-calendar-grid .calendar-day {
+  .owner-calendar-grid .calendar-day {
     min-height: 66px !important;
     padding: 7px !important;
   }
 
-  .admin-day-status,
-  .admin-day-room {
+  .owner-day-status,
+  .owner-day-room {
     font-size: 9px !important;
   }
 
-  .admin-day-number {
+  .owner-day-number {
     font-size: 14px;
   }
 
@@ -3070,26 +3310,26 @@ body.topup-modal-open #topupModal .topup-card {
     grid-template-columns: 1fr;
   }
 
-  .room-admin-card {
+  .room-owner-card {
     grid-template-columns: 1fr;
   }
 
-  .room-admin-fields {
+  .room-owner-fields {
     grid-template-columns: 1fr;
   }
 
-  .room-admin-media .room-thumb {
+  .room-owner-media .room-thumb {
     height: 190px;
   }
 }
 
 @media (max-width: 560px) {
-  .room-admin-card {
+  .room-owner-card {
     padding: 10px;
     border-radius: 16px;
   }
 
-  .room-admin-top {
+  .room-owner-top {
     align-items: flex-start;
     flex-direction: column;
   }
@@ -3350,13 +3590,13 @@ body.topup-modal-open #topupModal .topup-card {
   color: #a26d00;
 }
 
-/* หน้า Admin: ช่องรายละเอียดห้องพัก */
-.room-detail-admin-cell {
+/* หน้า Owner: ช่องรายละเอียดห้องพัก */
+.room-detail-owner-cell {
   min-width: 420px;
   max-width: 560px;
 }
 
-.room-detail-admin-cell .inline-textarea {
+.room-detail-owner-cell .inline-textarea {
   width: 100%;
   min-height: 160px;
   line-height: 1.6;
@@ -3364,14 +3604,14 @@ body.topup-modal-open #topupModal .topup-card {
   white-space: pre-wrap;
 }
 
-.admin-detail-preview {
+.owner-detail-preview {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 8px;
 }
 
-.admin-detail-preview span {
+.owner-detail-preview span {
   display: inline-flex;
   border-radius: 999px;
   background: var(--green-50);
@@ -3382,17 +3622,17 @@ body.topup-modal-open #topupModal .topup-card {
   line-height: 1.2;
 }
 
-.admin-detail-preview.muted-preview {
+.owner-detail-preview.muted-preview {
   color: var(--muted);
   font-size: 12px;
   margin-top: 8px;
 }
 
-.room-image-admin-cell {
+.room-image-owner-cell {
   min-width: 260px;
 }
 
-.room-image-admin-cell .room-thumb {
+.room-image-owner-cell .room-thumb {
   width: 120px;
   height: 78px;
   overflow: hidden;
@@ -3400,12 +3640,12 @@ body.topup-modal-open #topupModal .topup-card {
   place-items: center;
 }
 
-.room-image-admin-cell .image-url-input {
+.room-image-owner-cell .image-url-input {
   width: 100%;
   margin-top: 8px;
 }
 
-.room-image-admin-cell small {
+.room-image-owner-cell small {
   color: var(--muted);
   max-width: 260px;
 }
@@ -3415,7 +3655,7 @@ body.topup-modal-open #topupModal .topup-card {
     font-size: 14px;
   }
 
-  .room-detail-admin-cell {
+  .room-detail-owner-cell {
     min-width: 330px;
   }
 }
@@ -3445,11 +3685,11 @@ body.topup-modal-open #topupModal .topup-card {
   flex: 1;
 }
 
-.admin-detail-preview {
+.owner-detail-preview {
   display: none !important;
 }
 
-.admin-detail-preview-box {
+.owner-detail-preview-box {
   margin-top: 8px;
   padding: 12px 14px;
   border-radius: 16px;
@@ -3462,11 +3702,11 @@ body.topup-modal-open #topupModal .topup-card {
   overflow: auto;
 }
 
-.admin-detail-preview-box.muted-preview {
+.owner-detail-preview-box.muted-preview {
   color: var(--muted);
 }
 
-.room-detail-admin-cell .inline-textarea {
+.room-detail-owner-cell .inline-textarea {
   min-height: 180px;
   background: rgba(246, 252, 249, 0.98);
 }
@@ -3475,8 +3715,8 @@ body.topup-modal-open #topupModal .topup-card {
 /* รายละเอียดห้องพักแบบเดียวกับนโยบายที่พัก */
 .room-detail-list,
 .room-detail-box,
-.admin-detail-preview,
-.admin-detail-preview-box {
+.owner-detail-preview,
+.owner-detail-preview-box {
   display: none !important;
 }
 
@@ -3502,12 +3742,12 @@ body.topup-modal-open #topupModal .topup-card {
 }
 
 .room-policy-content::-webkit-scrollbar,
-.admin-room-policy-preview::-webkit-scrollbar {
+.owner-room-policy-preview::-webkit-scrollbar {
   width: 8px;
 }
 
 .room-policy-content::-webkit-scrollbar-thumb,
-.admin-room-policy-preview::-webkit-scrollbar-thumb {
+.owner-room-policy-preview::-webkit-scrollbar-thumb {
   background: rgba(35, 91, 72, 0.35);
   border-radius: 999px;
 }
@@ -3516,12 +3756,12 @@ body.topup-modal-open #topupModal .topup-card {
   flex: 1;
 }
 
-.room-detail-admin-cell {
+.room-detail-owner-cell {
   min-width: 520px !important;
   max-width: 680px !important;
 }
 
-.room-detail-admin-cell .inline-textarea {
+.room-detail-owner-cell .inline-textarea {
   width: 100%;
   min-height: 220px !important;
   padding: 18px !important;
@@ -3535,7 +3775,7 @@ body.topup-modal-open #topupModal .topup-card {
   white-space: pre-wrap;
 }
 
-.admin-room-policy-preview {
+.owner-room-policy-preview {
   margin-top: 10px;
   padding: 16px 18px;
   border-radius: 20px;
@@ -3557,7 +3797,7 @@ body.topup-modal-open #topupModal .topup-card {
     padding: 14px;
   }
 
-  .room-detail-admin-cell {
+  .room-detail-owner-cell {
     min-width: 360px !important;
   }
 }
@@ -3568,8 +3808,8 @@ body.topup-modal-open #topupModal .topup-card {
 .room-detail-box,
 .room-policy-box,
 .room-policy-content,
-.admin-detail-preview,
-.admin-detail-preview-box {
+.owner-detail-preview,
+.owner-detail-preview-box {
   display: none !important;
 }
 
@@ -3592,12 +3832,12 @@ body.topup-modal-open #topupModal .topup-card {
   color: var(--muted) !important;
 }
 
-.room-detail-admin-cell {
+.room-detail-owner-cell {
   min-width: 430px !important;
   max-width: 620px !important;
 }
 
-.room-detail-admin-cell .inline-textarea {
+.room-detail-owner-cell .inline-textarea {
   width: 100% !important;
   min-height: 180px !important;
   resize: vertical !important;
@@ -3612,7 +3852,7 @@ body.topup-modal-open #topupModal .topup-card {
 }
 
 @media (max-width: 760px) {
-  .room-detail-admin-cell {
+  .room-detail-owner-cell {
     min-width: 320px !important;
   }
 }
@@ -3741,7 +3981,7 @@ body.is-loading-popup {
 .inactive-card h2 { color: #dc2626; margin: 0 0 .75rem; }
 .inactive-card p  { color: #6b7280; line-height: 1.7; margin: 0; }
 
-/* ======= CREDIT STATUS CARD (Admin) ======= */
+/* ======= CREDIT STATUS CARD (Owner) ======= */
 .credit-status-card {
   background: linear-gradient(135deg, #f0fdf4, #dcfce7);
   border: 2px solid #86efac; border-radius: 1rem;
@@ -3796,7 +4036,7 @@ body.is-loading-popup {
 }
 .pkg-btn:hover { background: #15803d; }
 
-/* ======= CREDIT BAR (Admin compact) ======= */
+/* ======= CREDIT BAR (Owner compact) ======= */
 .credit-bar {
   display: flex; align-items: center; justify-content: space-between;
   flex-wrap: wrap; gap: .75rem;
@@ -3934,7 +4174,7 @@ body.is-loading-popup {
   border: 1.5px solid #fde68a; border-radius: 99px; font-size: .9rem;
 }
 
-/* ======= PENDING REQUESTS (Company) ======= */
+/* ======= PENDING REQUESTS (Admin) ======= */
 .request-item {
   border: 1.5px solid #e5e7eb; border-radius: .75rem;
   padding: 1rem; margin-bottom: .75rem;
@@ -4062,6 +4302,7 @@ body.is-loading-popup {
 
   .booking-panel,
   .login-card,
+  .owner-card,
   .admin-card,
   .history-panel,
   .summary,
@@ -4072,7 +4313,7 @@ body.is-loading-popup {
   .addon-section,
   .payment-section,
   .date-detail-panel,
-  .admin-calendar-box {
+  .owner-calendar-box {
     border-radius: 16px;
     padding: 14px;
   }
@@ -4236,20 +4477,20 @@ body.is-loading-popup {
     font-size: 12px;
   }
 
-  .admin-calendar-grid .calendar-day {
+  .owner-calendar-grid .calendar-day {
     min-height: 54px;
     gap: 2px;
   }
 
-  .admin-day-number {
+  .owner-day-number {
     font-size: 12px;
   }
 
-  .admin-day-status {
+  .owner-day-status {
     font-size: 10px;
   }
 
-  .admin-day-room {
+  .owner-day-room {
     font-size: 9px !important;
   }
 
@@ -4529,7 +4770,7 @@ body.modal-open {
 
   nav,
   .customer-only-nav,
-  .admin-header-actions {
+  .owner-header-actions {
     width: 100%;
     overflow-x: auto;
     border-radius: 16px;
@@ -4543,6 +4784,7 @@ body.modal-open {
   .hero-text,
   .hero-card,
   .booking-panel,
+  .owner-card,
   .admin-card,
   .login-card,
   .table-wrap {
@@ -4595,7 +4837,7 @@ body.modal-open {
     font-size: 13px;
   }
 
-  .room-admin-fields,
+  .room-owner-fields,
   .room-card-actions,
   .tools,
   .date-summary,

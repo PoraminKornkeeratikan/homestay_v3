@@ -11,7 +11,9 @@ alter table public.credit_ledger enable row level security;
 alter table public.topup_requests enable row level security;
 
 drop policy if exists "dev anon select homestays" on public.homestays;
+drop policy if exists "dev anon insert homestays" on public.homestays;
 drop policy if exists "dev anon update homestays" on public.homestays;
+drop policy if exists "dev anon delete homestays" on public.homestays;
 drop policy if exists "dev anon select homestay settings" on public.homestay_settings;
 drop policy if exists "dev anon upsert homestay settings" on public.homestay_settings;
 drop policy if exists "dev anon select rooms" on public.rooms;
@@ -23,6 +25,7 @@ drop policy if exists "dev anon insert bookings" on public.bookings;
 drop policy if exists "dev anon update bookings" on public.bookings;
 drop policy if exists "dev anon delete bookings" on public.bookings;
 drop policy if exists "dev anon select homestay plans" on public.homestay_plans;
+drop policy if exists "dev anon insert homestay plans" on public.homestay_plans;
 drop policy if exists "dev anon update homestay plans" on public.homestay_plans;
 drop policy if exists "dev anon select credit ledger" on public.credit_ledger;
 drop policy if exists "dev anon insert credit ledger" on public.credit_ledger;
@@ -34,10 +37,18 @@ create policy "dev anon select homestays"
 on public.homestays for select to anon
 using (true);
 
+create policy "dev anon insert homestays"
+on public.homestays for insert to anon
+with check (true);
+
 create policy "dev anon update homestays"
 on public.homestays for update to anon
 using (true)
 with check (true);
+
+create policy "dev anon delete homestays"
+on public.homestays for delete to anon
+using (true);
 
 create policy "dev anon select homestay settings"
 on public.homestay_settings for select to anon
@@ -85,6 +96,10 @@ using (true);
 create policy "dev anon select homestay plans"
 on public.homestay_plans for select to anon
 using (true);
+
+create policy "dev anon insert homestay plans"
+on public.homestay_plans for insert to anon
+with check (true);
 
 create policy "dev anon update homestay plans"
 on public.homestay_plans for update to anon

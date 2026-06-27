@@ -1,3 +1,4 @@
 /admin /admin.html 200
+/company /admin.html 200
 /customer /customer.html 200
 /* /index.html 200

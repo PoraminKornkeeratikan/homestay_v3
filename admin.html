@@ -8,24 +8,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
-  <link rel="icon" href="LOGO.jpg?v=2" type="image/jpeg" />
+  <link rel="icon" href="default-home-logo.svg" type="image/svg+xml" />
   <style>
-    /* ======= Company Page Extra Styles ======= */
-    .company-login { display:flex; align-items:center; justify-content:center; min-height:80vh; }
-
-    .company-header-bar {
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-      color: #fff;
-      padding: 1.5rem 2rem;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      border-radius: 1rem;
-      margin-bottom: 2rem;
-    }
-    .company-header-bar .co-icon { font-size: 2.5rem; }
-    .company-header-bar h2 { margin: 0; font-size: 1.4rem; }
-    .company-header-bar p  { margin: 0; opacity: .7; font-size: .85rem; }
+    /* ======= Admin Page Extra Styles ======= */
+    .admin-login { display:flex; align-items:center; justify-content:center; min-height:80vh; }
 
     body.login-hidden header.topbar { display: none; }
 
@@ -102,21 +88,6 @@
       color: #7c3aed; margin: 1rem 0; font-size: .9rem;
     }
 
-    .current-status-card {
-      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
-      border: 2px solid #86efac;
-      border-radius: 1rem; padding: 1.25rem 1.5rem;
-      margin-bottom: 2rem;
-      display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center;
-    }
-    .current-status-card.status-inactive {
-      background: linear-gradient(135deg, #fef2f2, #fee2e2);
-      border-color: #fca5a5;
-    }
-    .status-val { font-size: 2rem; font-weight: 700; color: #15803d; }
-    .status-val.inactive-val { color: #dc2626; }
-    .status-label { font-size: .8rem; color: #6b7280; }
-
     .apply-btn {
       width: 100%; padding: .85rem; border-radius: .75rem;
       background: #16a34a; color: #fff; font-size: 1rem;
@@ -163,58 +134,89 @@
 <body data-page-title-suffix="Admin">
   <header class="topbar">
     <a class="brand" href="owner.html">
-      <img class="site-logo" src="LOGO.jpg" alt="โลโก้โฮมสเตย์" />
       <div>
-        <h1>Wiwahrin</h1>
-        <p>Admin • จัดการเครดิต</p>
+        <h1>Admin</h1>
+        <p>จัดการ Owner</p>
       </div>
     </a>
     <nav>
-      <a class="nav-link" href="owner.html">← Owner</a>
+      <a class="nav-link" href="owner.html">Owner</a>
+      <button type="button" class="ghost-btn" id="adminLogoutBtn">ออกจากระบบ</button>
     </nav>
   </header>
 
   <main>
     <!-- Login -->
-    <section class="company-login" id="companyLoginBox">
+    <section class="admin-login" id="adminLoginBox">
       <div class="login-card">
-        <img class="logo large" src="LOGO.jpg" alt="โลโก้" />
+        <img class="logo large" src="default-home-logo.svg" alt="โลโก้" />
         <h2>Admin</h2>
         <p style="color:#6b7280;font-size:.9rem;margin:.5rem 0 1.25rem;">สำหรับ Admin เท่านั้น</p>
-        <input type="password" id="companyPassword" placeholder="กรอกรหัสผ่าน" />
-        <button id="companyLoginBtn">เข้าสู่ระบบ</button>
+        <input type="password" id="adminPassword" placeholder="กรอกรหัสผ่าน" />
+        <button id="adminLoginBtn">เข้าสู่ระบบ</button>
       </div>
     </section>
 
     <!-- Dashboard -->
-    <section class="hidden" id="companyDashboard">
-      <div class="company-header-bar">
-        <div class="co-icon">🏢</div>
-        <div>
-          <h2>จัดการเครดิตระบบจอง</h2>
-          <p>กำหนดแพ็กเกจ เติมเครดิต และตั้งค่าการใช้งานสำหรับ Admin</p>
+    <section class="hidden" id="adminDashboard">
+      <div class="admin-card" style="margin-bottom:1.5rem">
+        <div class="section-mini-head">
+          <h4>ค่าจอง</h4>
+          <p>กำหนดค่าจองที่จะบวกในยอดชำระของลูกค้าทุกการจอง</p>
         </div>
-        <button class="ghost-btn" style="margin-left:auto" id="companyLogoutBtn">ออกจากระบบ</button>
+        <form class="settings-form" id="adminBookingFeeForm">
+          <div class="field">
+            <label>ค่าจอง / รายการ</label>
+            <input type="number" id="adminBookingFeeInput" min="0" step="1" />
+          </div>
+          <button type="submit">บันทึกค่าจอง</button>
+        </form>
       </div>
 
-      <!-- Current Status -->
-      <div class="current-status-card" id="currentStatusCard">
-        <div>
-          <div class="status-label">สถานะระบบ</div>
-          <div class="status-val" id="statusVal">กำลังโหลด...</div>
+      <div class="admin-card" style="margin-bottom:1.5rem">
+        <div class="section-mini-head">
+          <h4>เพิ่มโฮมสเตย์</h4>
+          <p>สร้างโฮมสเตย์ใหม่พร้อมค่าเริ่มต้นสำหรับหน้า Owner และ Customer</p>
         </div>
-        <div>
-          <div class="status-label">แพ็กเกจปัจจุบัน</div>
-          <div class="status-val" id="planVal" style="font-size:1.1rem">-</div>
+        <form class="settings-form" id="adminHomestayForm">
+          <div class="field">
+            <label>ชื่อโฮมสเตย์</label>
+            <input type="text" id="adminHomestayName" placeholder="เช่น บ้านสวนริมน้ำ" required />
+          </div>
+          <div class="field">
+            <label>Slug</label>
+            <input type="text" id="adminHomestaySlug" placeholder="เช่น baan-suan" />
+            <small class="input-hint">ใช้ใน URL เช่น owner.html?homestay=baan-suan</small>
+          </div>
+          <div class="field">
+            <label>ลิงก์เพจ</label>
+            <input type="url" id="adminHomestayPageUrl" placeholder="https://facebook.com/..." />
+          </div>
+          <div class="field">
+            <label>ลิงก์ GPS</label>
+            <input type="url" id="adminHomestayGpsUrl" placeholder="https://maps.app.goo.gl/..." />
+          </div>
+          <button type="submit">สร้างโฮมสเตย์</button>
+        </form>
+        <div class="empty hidden" id="adminHomestayResult"></div>
+      </div>
+
+      <div class="admin-card" style="margin-bottom:1.5rem">
+        <div class="section-mini-head admin-homestay-head">
+          <div>
+            <h4>โฮมสเตย์ทั้งหมด <span id="adminHomestayCount" class="admin-count-badge">0</span></h4>
+            <div class="admin-total-credit">เครดิตรวม: <strong id="adminTotalCredits">0</strong></div>
+            <p>ดูเครดิต เติมเครดิต ลบเครดิต และลบโฮมสเตย์แยกตามแต่ละรายการ</p>
+          </div>
+          <button type="button" class="ghost-btn" id="refreshHomestaysBtn">รีเฟรช</button>
         </div>
-        <div>
-          <div class="status-label">เครดิต / วันหมดอายุ</div>
-          <div class="status-val" id="creditVal" style="font-size:1.1rem">-</div>
+        <div id="adminHomestayList" class="admin-homestay-list">
+          <div class="empty">กำลังโหลดโฮมสเตย์...</div>
         </div>
       </div>
 
       <!-- Plan Selector -->
-      <div class="admin-card" style="margin-bottom:1.5rem">
+      <div class="admin-card hidden" style="margin-bottom:1.5rem">
         <div class="section-mini-head">
           <h4>เลือกประเภทแพ็กเกจ</h4>
           <p>เลือกได้ 1 แพ็กเกจเท่านั้น</p>
@@ -247,7 +249,7 @@
             <p>ใช้งานได้ไม่จำกัดครั้ง นับตั้งแต่วันเปิดใช้งาน 1 ปีเต็ม</p>
             <div class="yearly-info" id="yearlyInfo">
               📌 วันเริ่มใช้งานจะนับจากวันที่กดเปิดใช้งาน<br>
-              ระบบจะแจ้งวันหมดอายุให้ทราบที่หน้า Admin
+              ระบบจะแจ้งวันหมดอายุให้ทราบที่หน้า Owner
             </div>
           </div>
 
@@ -273,7 +275,7 @@
       <div class="admin-card" style="margin-bottom:1.5rem" id="pendingRequestsCard">
         <div class="section-mini-head">
           <h4>📨 คำขอเติมเครดิต</h4>
-          <p>รายการที่ Admin ส่งมาขอเติมเครดิต กรุณาตรวจสลิปก่อนอนุมัติ</p>
+          <p>รายการที่ Owner ส่งมาขอเติมเครดิต กรุณาตรวจสลิปก่อนอนุมัติ</p>
         </div>
         <div id="pendingRequestsList">
           <div class="empty">ไม่มีคำขอที่รอดำเนินการ</div>
@@ -281,7 +283,7 @@
       </div>
 
       <!-- Danger Zone -->
-      <div class="admin-card">
+      <div class="admin-card hidden">
         <div class="section-mini-head">
           <h4>⚠️ รีเซ็ตระบบ</h4>
           <p>ยกเลิกแพ็กเกจและล้างเครดิตทั้งหมด ระบบจะหยุดทำงาน</p>
@@ -298,6 +300,20 @@
   <script>
     let selectedPlanType = "";
     let selectedCreditPkg = null;
+    let adminSettings = normalizeSettings(DEFAULT_SETTINGS);
+    const adminBookingFeeForm = document.getElementById("adminBookingFeeForm");
+    const adminBookingFeeInput = document.getElementById("adminBookingFeeInput");
+    const adminHomestayForm = document.getElementById("adminHomestayForm");
+    const adminHomestayName = document.getElementById("adminHomestayName");
+    const adminHomestaySlug = document.getElementById("adminHomestaySlug");
+    const adminHomestayPageUrl = document.getElementById("adminHomestayPageUrl");
+    const adminHomestayGpsUrl = document.getElementById("adminHomestayGpsUrl");
+    const adminHomestayResult = document.getElementById("adminHomestayResult");
+    const adminHomestayList = document.getElementById("adminHomestayList");
+    const adminHomestayCount = document.getElementById("adminHomestayCount");
+    const adminTotalCredits = document.getElementById("adminTotalCredits");
+    const refreshHomestaysBtn = document.getElementById("refreshHomestaysBtn");
+    let adminHomestays = [];
 
     function renderCoPkgGrid() {
       const grid = document.getElementById('coPkgGrid');
@@ -335,13 +351,288 @@
       setTimeout(() => t.classList.remove("show"), 3000);
     }
 
-    async function loadCompanyBrandAssets() {
+    function normalizeAdminSlug(value, fallback = "homestay") {
+      const slug = String(value || fallback || "homestay")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      return slug || `homestay-${Date.now()}`;
+    }
+
+    function renderCreatedHomestay(homestay) {
+      if (!adminHomestayResult) return;
+      const slug = homestay.slug || "-";
+      const ownerUrl = homestay.ownerUrl || `owner.html?homestay=${encodeURIComponent(slug)}`;
+      const customerUrl = homestay.customerUrl || `customer.html?homestay=${encodeURIComponent(slug)}`;
+      const warnings = Array.isArray(homestay.warnings) ? homestay.warnings.filter(Boolean) : [];
+      adminHomestayResult.classList.remove("hidden");
+      adminHomestayResult.innerHTML = `
+        <div style="text-align:left">
+          <b>สร้างโฮมสเตย์แล้ว: ${escapeHtml(homestay.name || slug)}</b><br>
+          <span>Slug: ${escapeHtml(slug)}</span><br>
+          <a href="${escapeHtml(ownerUrl)}" target="_blank" rel="noopener">เปิดหน้า Owner</a><br>
+          <a href="${escapeHtml(customerUrl)}" target="_blank" rel="noopener">เปิดหน้า Customer</a>
+        </div>
+      `;
+      if (warnings.length) {
+        adminHomestayResult.querySelector("div")?.insertAdjacentHTML(
+          "beforeend",
+          `<br><small style="color:#b45309">${warnings.map(escapeHtml).join("<br>")}</small>`
+        );
+      }
+    }
+
+    function formatAdminPlanLabel(homestay) {
+      const type = homestay.plan?.plan_type || homestay.planType || "credit";
+      if (type === "infinity") return "Infinity";
+      if (type === "yearly") return "รายปี";
+      return "เครดิต";
+    }
+
+    function getAdminHomestayStatus(homestay) {
+      const plan = homestay.plan || {};
+      const homestayStatus = String(homestay.status || "active").toLowerCase();
+      const planStatus = String(plan.status || homestay.planStatus || "active").toLowerCase();
+      const type = plan.plan_type || homestay.planType || "credit";
+      const credits = Number(homestay.credits ?? plan.credits ?? 0);
+      const expiresAt = plan.plan_expires_at || plan.planExpiresAt || homestay.planExpiresAt || "";
+      const startedAt = plan.plan_started_at || plan.planStartedAt || homestay.planStartedAt || "";
+
+      if (homestayStatus === "inactive" || planStatus === "inactive") {
+        return { active: false, label: "หยุดทำงาน" };
+      }
+
+      if (type === "infinity") return { active: true, label: "ใช้งานอยู่" };
+
+      if (type === "yearly") {
+        if (!expiresAt && !startedAt) return { active: false, label: "หยุดทำงาน" };
+        const expiry = expiresAt ? new Date(expiresAt) : new Date(startedAt);
+        if (!expiresAt && !Number.isNaN(expiry.getTime())) expiry.setFullYear(expiry.getFullYear() + 1);
+        const active = !Number.isNaN(expiry.getTime()) && new Date() < expiry;
+        return { active, label: active ? "ใช้งานอยู่" : "หยุดทำงาน" };
+      }
+
+      const active = credits > 0;
+      return { active, label: active ? "ใช้งานอยู่" : "หยุดทำงาน" };
+    }
+
+    function getAdminHomestayById(id) {
+      return adminHomestays.find(item => String(item.id) === String(id)) || null;
+    }
+
+    function renderAdminHomestays() {
+      if (!adminHomestayList) return;
+      if (adminHomestayCount) adminHomestayCount.textContent = String(adminHomestays.length);
+      if (adminTotalCredits) {
+        const totalCredits = adminHomestays.reduce((sum, item) => sum + Number(item.credits ?? item.plan?.credits ?? 0), 0);
+        adminTotalCredits.textContent = totalCredits.toLocaleString("th-TH");
+      }
+
+      if (!adminHomestays.length) {
+        adminHomestayList.innerHTML = `<div class="empty">ยังไม่มีโฮมสเตย์ในระบบ</div>`;
+        return;
+      }
+
+      adminHomestayList.innerHTML = adminHomestays.map(homestay => {
+        const id = escapeHtml(homestay.id || "");
+        const slug = escapeHtml(homestay.slug || "-");
+        const name = escapeHtml(homestay.name || homestay.slug || "Homestay");
+        const credits = Number(homestay.credits ?? homestay.plan?.credits ?? 0);
+        const ownerUrl = escapeHtml(homestay.ownerUrl || `owner.html?homestay=${encodeURIComponent(homestay.slug || "")}`);
+        const customerUrl = escapeHtml(homestay.customerUrl || `customer.html?homestay=${encodeURIComponent(homestay.slug || "")}`);
+        const status = getAdminHomestayStatus(homestay);
+        const statusClass = status.active ? "is-active" : "is-inactive";
+
+        return `
+          <div class="admin-homestay-card" data-homestay-id="${id}">
+            <div class="admin-homestay-main">
+              <div>
+                <div class="admin-homestay-title">
+                  <span class="admin-status-badge ${statusClass}">${escapeHtml(status.label)}</span>
+                  <h5>${name}</h5>
+                </div>
+                <div class="admin-homestay-meta">Slug: ${slug} • แพ็กเกจ: ${escapeHtml(formatAdminPlanLabel(homestay))}</div>
+                <div class="admin-homestay-links">
+                  <a href="${ownerUrl}" target="_blank" rel="noopener">Owner</a>
+                  <a href="${customerUrl}" target="_blank" rel="noopener">Customer</a>
+                </div>
+              </div>
+              <div class="admin-credit-pill">${credits.toLocaleString("th-TH")} เครดิต</div>
+            </div>
+            <div class="admin-homestay-actions">
+              <input type="number" min="1" step="1" value="10" data-role="creditAmount" aria-label="จำนวนเครดิต" />
+              <button type="button" class="admin-add-credit" data-action="addCredits">เติมเครดิต</button>
+              <button type="button" class="admin-remove-credit" data-action="removeCredits">ลบเครดิต</button>
+              <button type="button" class="admin-delete-homestay" data-action="deleteHomestay">ลบโฮมสเตย์</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function loadAdminHomestays() {
+      if (adminHomestayList) {
+        adminHomestayList.innerHTML = `<div class="empty">กำลังโหลดโฮมสเตย์...</div>`;
+      }
+
       try {
-        const result = await apiRequest({ action: "settings" });
-        const loadedSettings = normalizeSettings(result.data || result.settings || {});
-        applyBrandAssets(loadedSettings);
+        const result = await apiRequest({ action: "adminListHomestays" });
+        if (!result.ok) throw new Error(result.message || "โหลดรายการโฮมสเตย์ไม่สำเร็จ");
+        adminHomestays = Array.isArray(result.data) ? result.data : [];
+        renderAdminHomestays();
       } catch (error) {
-        applyBrandAssets(normalizeSettings(typeof localGetSettings === "function" ? localGetSettings() : DEFAULT_SETTINGS));
+        console.error(error);
+        if (adminHomestayList) {
+          adminHomestayList.innerHTML = `<div class="empty" style="color:#b91c1c">โหลดรายการโฮมสเตย์ไม่สำเร็จ<br>${escapeHtml(error.message || "Unknown error")}</div>`;
+        }
+      }
+    }
+
+    async function updateHomestayCredits(homestayId, delta) {
+      const homestay = getAdminHomestayById(homestayId);
+      if (!homestay) return;
+      const card = Array.from(adminHomestayList?.querySelectorAll("[data-homestay-id]") || [])
+        .find(item => String(item.dataset.homestayId) === String(homestayId));
+      const amountInput = card?.querySelector('[data-role="creditAmount"]');
+      const rawAmount = Number(amountInput?.value || 0);
+      const amount = Number.isFinite(rawAmount) && rawAmount > 0 ? rawAmount : 1;
+      const currentCredits = Number(homestay.credits ?? homestay.plan?.credits ?? 0);
+      const nextCredits = Math.max(0, currentCredits + (delta * amount));
+
+      try {
+        const result = await apiRequest({
+          action: "adminUpdateHomestayPlan",
+          homestayId,
+          plan: {
+            planType: "credit",
+            credits: nextCredits,
+            status: "active"
+          }
+        });
+        if (!result.ok) throw new Error(result.message || "บันทึกเครดิตไม่สำเร็จ");
+        showToast(delta > 0 ? "เติมเครดิตแล้ว" : "ลบเครดิตแล้ว");
+        await loadAdminHomestays();
+      } catch (error) {
+        console.error(error);
+        showToast(`บันทึกเครดิตไม่สำเร็จ: ${error.message || "ไม่ทราบสาเหตุ"}`);
+      }
+    }
+
+    async function deleteAdminHomestay(homestayId) {
+      const homestay = getAdminHomestayById(homestayId);
+      if (!homestay) return;
+      const label = homestay.name || homestay.slug || "homestay";
+      if (!confirm(`ยืนยันลบ "${label}"? หลังลบแล้วหน้า Owner และ Customer ของโฮมสเตย์นี้จะหาไม่เจอ`)) return;
+
+      try {
+        const result = await apiRequest({ action: "adminDeleteHomestay", homestayId });
+        if (!result.ok) throw new Error(result.message || "ลบโฮมสเตย์ไม่สำเร็จ");
+        showToast("ลบโฮมสเตย์แล้ว");
+        await loadAdminHomestays();
+      } catch (error) {
+        console.error(error);
+        showToast(`ลบโฮมสเตย์ไม่สำเร็จ: ${error.message || "ไม่ทราบสาเหตุ"}`);
+      }
+    }
+
+    function handleAdminHomestayAction(event) {
+      const button = event.target.closest("[data-action]");
+      if (!button) return;
+      const card = button.closest("[data-homestay-id]");
+      const homestayId = card?.dataset?.homestayId;
+      if (!homestayId) return;
+
+      if (button.dataset.action === "addCredits") updateHomestayCredits(homestayId, 1);
+      if (button.dataset.action === "removeCredits") updateHomestayCredits(homestayId, -1);
+      if (button.dataset.action === "deleteHomestay") deleteAdminHomestay(homestayId);
+    }
+
+    async function createAdminHomestay(event) {
+      event.preventDefault();
+      const name = adminHomestayName?.value.trim() || "";
+      const slug = normalizeAdminSlug(adminHomestaySlug?.value || name);
+      if (!name) {
+        showToast("กรุณากรอกชื่อโฮมสเตย์");
+        return;
+      }
+
+      try {
+        const result = await apiRequest({
+          action: "createHomestay",
+          homestay: {
+            name,
+            slug,
+            pageUrl: adminHomestayPageUrl?.value.trim() || "",
+            gpsUrl: adminHomestayGpsUrl?.value.trim() || ""
+          }
+        });
+        if (!result.ok) throw new Error(result.message || "สร้างโฮมสเตย์ไม่สำเร็จ");
+        renderCreatedHomestay(result.data || {});
+        adminHomestayForm?.reset();
+        await loadAdminHomestays();
+        showToast("สร้างโฮมสเตย์แล้ว");
+      } catch (error) {
+        console.error(error);
+        if (adminHomestayResult) {
+          adminHomestayResult.classList.remove("hidden");
+          adminHomestayResult.innerHTML = `<div style="text-align:left;color:#b91c1c"><b>สร้างไม่สำเร็จ</b><br>${escapeHtml(error.message || "Unknown error")}</div>`;
+        }
+        showToast(`สร้างโฮมสเตย์ไม่สำเร็จ: ${error.message || "ไม่ทราบสาเหตุ"}`);
+      }
+    }
+
+    function renderAdminBookingFeeForm() {
+      if (!adminBookingFeeInput) return;
+      adminBookingFeeInput.value = Number(adminSettings.bookingFee?.value ?? adminSettings.bookingFee ?? (typeof BOOKING_FEE !== "undefined" ? BOOKING_FEE : 20));
+    }
+
+    function renderAdminTopbarTitle() {
+      const title = document.querySelector("header.topbar .brand h1");
+      const subtitle = document.querySelector("header.topbar .brand p");
+      if (title) title.textContent = "Admin";
+      if (subtitle) subtitle.textContent = "จัดการ Owner";
+      document.title = "Admin";
+    }
+
+    async function loadAdminBrandAssets() {
+      try {
+        const result = await apiRequest({ action: "bootstrap" });
+        const payload = result.data || result;
+        const loadedSettings = normalizeSettings(payload.settings || result.settings || payload.data || {});
+        adminSettings = loadedSettings;
+        applyBrandAssets(adminSettings);
+        renderAdminTopbarTitle();
+        renderAdminBookingFeeForm();
+        renderCurrentStatus();
+      } catch (error) {
+        console.warn("Admin plan sync failed; clearing stale local credits:", error?.message);
+        if (typeof resetLocalPlanState === "function") resetLocalPlanState();
+        adminSettings = normalizeSettings(typeof localGetSettings === "function" ? localGetSettings() : DEFAULT_SETTINGS);
+        applyBrandAssets(adminSettings);
+        renderAdminTopbarTitle();
+        renderAdminBookingFeeForm();
+        renderCurrentStatus();
+      }
+    }
+
+    async function saveAdminBookingFee(event) {
+      event.preventDefault();
+      const bookingFee = Math.max(0, Number(adminBookingFeeInput?.value || 0));
+      const nextSettings = {
+        ...adminSettings,
+        bookingFee: { label: "ค่าจอง", value: bookingFee }
+      };
+
+      try {
+        const result = await apiRequest({ action: "updateSettings", settings: nextSettings });
+        if (!result.ok) throw new Error(result.message || "บันทึกค่าจองไม่สำเร็จ");
+        adminSettings = normalizeSettings(result.data || nextSettings);
+        renderAdminBookingFeeForm();
+        showToast("บันทึกค่าจองแล้ว");
+      } catch (error) {
+        console.error(error);
+        showToast("บันทึกค่าจองไม่สำเร็จ");
       }
     }
 
@@ -352,64 +643,77 @@
       if (map[type]) document.getElementById(map[type]).classList.add("selected");
     }
 
-    function applyPlan() {
+    function getYearlyExpiry(startDate) {
+      const expiry = new Date(startDate);
+      expiry.setFullYear(expiry.getFullYear() + 1);
+      return expiry.toISOString();
+    }
+
+    async function saveAdminPlan(plan) {
+      const result = await apiRequest({ action: "updatePlan", plan });
+      if (!result.ok) throw new Error(result.message || "บันทึกแพ็กเกจไม่สำเร็จ");
+      return result.data || plan;
+    }
+
+    async function applyPlan() {
       if (!selectedPlanType) {
         showToast("กรุณาเลือกประเภทแพ็กเกจก่อน");
         return;
       }
 
-      if (selectedPlanType === "credit") {
-        if (!selectedCreditPkg) { showToast("กรุณาเลือกแพ็กเกจเครดิตก่อน"); return; }
-        const current = getCredits();
-        setPlan("credit", "");
-        setCredits(current + selectedCreditPkg.credits);
-        showToast(`✅ เติม ${selectedCreditPkg.credits} เครดิตสำเร็จ รวม ${getCredits()} เครดิต`);
-      } else if (selectedPlanType === "yearly") {
-        const start = new Date().toISOString().split("T")[0];
-        setPlan("yearly", start);
-        showToast("✅ เปิดใช้งานแพ็กเกจรายปีสำเร็จ");
-      } else if (selectedPlanType === "infinity") {
-        setPlan("infinity", "");
-        showToast("✅ เปิดใช้งานอินฟินิตี้สำเร็จ");
-      }
+      try {
+        if (selectedPlanType === "credit") {
+          if (!selectedCreditPkg) { showToast("กรุณาเลือกแพ็กเกจเครดิตก่อน"); return; }
+          const nextCredits = getCredits() + Number(selectedCreditPkg.credits || 0);
+          await saveAdminPlan({
+            planType: "credit",
+            credits: nextCredits,
+            status: "active"
+          });
+          showToast(`✅ เติม ${selectedCreditPkg.credits} เครดิตสำเร็จ รวม ${getCredits()} เครดิต`);
+        } else if (selectedPlanType === "yearly") {
+          const start = new Date().toISOString();
+          await saveAdminPlan({
+            planType: "yearly",
+            credits: getCredits(),
+            planStartedAt: start,
+            planExpiresAt: getYearlyExpiry(start),
+            status: "active"
+          });
+          showToast("✅ เปิดใช้งานแพ็กเกจรายปีสำเร็จ");
+        } else if (selectedPlanType === "infinity") {
+          await saveAdminPlan({
+            planType: "infinity",
+            credits: getCredits(),
+            status: "active"
+          });
+          showToast("✅ เปิดใช้งานอินฟินิตี้สำเร็จ");
+        }
 
-      renderCurrentStatus();
+        renderCurrentStatus();
+      } catch (error) {
+        console.error(error);
+        showToast("บันทึกแพ็กเกจไม่สำเร็จ");
+      }
     }
 
-    function resetSystem() {
+    async function resetSystem() {
       if (!confirm("ยืนยันรีเซ็ตระบบ? เครดิตและแพ็กเกจทั้งหมดจะถูกล้าง ระบบจะหยุดทำงาน")) return;
-      localStorage.removeItem("hs_credits");
-      localStorage.removeItem("hs_plan_type");
-      localStorage.removeItem("hs_plan_start");
-      showToast("รีเซ็ตเรียบร้อย ระบบหยุดทำงาน");
-      renderCurrentStatus();
+      try {
+        const result = await apiRequest({ action: "resetPlan" });
+        if (!result.ok) throw new Error(result.message || "รีเซ็ตระบบไม่สำเร็จ");
+        setPlan("credit", "");
+        setCredits(0);
+        showToast("รีเซ็ตเรียบร้อย ระบบหยุดทำงาน");
+        renderCurrentStatus();
+      } catch (error) {
+        console.error(error);
+        showToast(`รีเซ็ตระบบไม่สำเร็จ: ${error.message || "ไม่ทราบสาเหตุ"}`);
+      }
     }
 
     function renderCurrentStatus() {
       const type = getPlanType();
-      const active = isSystemActive();
-      const card = document.getElementById("currentStatusCard");
-      const statusVal = document.getElementById("statusVal");
-      const planVal = document.getElementById("planVal");
-      const creditVal = document.getElementById("creditVal");
-
-      card.className = "current-status-card" + (active ? "" : " status-inactive");
-      statusVal.className = "status-val" + (active ? "" : " inactive-val");
-      statusVal.textContent = active ? "✅ ใช้งานได้" : "🔒 หยุดทำงาน";
-
-      if (type === "infinity") {
-        planVal.textContent = "♾️ อินฟินิตี้";
-        creditVal.textContent = "ไม่มีวันหมดอายุ";
-      } else if (type === "yearly") {
-        const exp = getExpiryDate();
-        const expStr = exp ? exp.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" }) : "-";
-        planVal.textContent = "📅 รายปี";
-        creditVal.textContent = `หมดอายุ ${expStr}`;
-      } else {
-        planVal.textContent = "💳 เครดิต";
-        creditVal.textContent = `${getCredits()} เครดิต`;
-      }
-
       if (type) selectPlan(type);
       renderPendingRequests();
       renderCoPkgGrid();
@@ -469,7 +773,7 @@
       req.approvedAt = new Date().toISOString();
       saveTopupRequests(reqs);
       const desc = req.type === "yearly" ? "แพ็กเกจรายปี" : req.credits + " เครดิต";
-      showToast(`✅ อนุมัติ ${desc} ให้ Admin แล้ว`);
+      showToast(`✅ อนุมัติ ${desc} ให้ Owner แล้ว`);
       renderPendingRequests();
       renderCurrentStatus();
     }
@@ -487,44 +791,59 @@
 
     // Poll ทุก 5 วินาทีเพื่ออัปเดต pending list
     setInterval(() => {
-      if (!document.getElementById("companyDashboard").classList.contains("hidden")) {
+      if (!document.getElementById("adminDashboard").classList.contains("hidden")) {
         renderPendingRequests();
       }
     }, 5000);
 
     // Login
-    function setCompanyLoginState(isLogin) {
+    function setAdminLoginState(isLogin) {
       document.body.classList.toggle('login-hidden', isLogin);
-      document.getElementById("companyLoginBox").classList.toggle("hidden", !isLogin);
-      document.getElementById("companyDashboard").classList.toggle("hidden", isLogin);
+      document.getElementById("adminLoginBox").classList.toggle("hidden", !isLogin);
+      document.getElementById("adminDashboard").classList.toggle("hidden", isLogin);
     }
 
-    document.getElementById("companyLoginBtn").addEventListener("click", () => {
-      const pw = document.getElementById("companyPassword").value;
-      if (pw === COMPANY_PASSWORD) {
-        setCompanyLoginState(false);
+    document.getElementById("adminLoginBtn").addEventListener("click", () => {
+      const pw = document.getElementById("adminPassword").value;
+      if (pw === ADMIN_PASSWORD) {
+        setAdminLoginState(false);
         renderCurrentStatus();
-        showToast("เข้าสู่ระบบ Company สำเร็จ");
+        showToast("เข้าสู่ระบบ Admin สำเร็จ");
       } else {
         showToast("รหัสผ่านไม่ถูกต้อง");
       }
     });
 
-    document.getElementById("companyPassword").addEventListener("keydown", e => {
-      if (e.key === "Enter") document.getElementById("companyLoginBtn").click();
+    document.getElementById("adminPassword").addEventListener("keydown", e => {
+      if (e.key === "Enter") document.getElementById("adminLoginBtn").click();
     });
 
-    document.getElementById("companyLogoutBtn").addEventListener("click", () => {
-      setCompanyLoginState(true);
-      document.getElementById("companyPassword").value = "";
+    document.getElementById("adminLogoutBtn").addEventListener("click", () => {
+      setAdminLoginState(true);
+      document.getElementById("adminPassword").value = "";
+    });
+
+    adminBookingFeeForm?.addEventListener("submit", saveAdminBookingFee);
+    adminHomestayForm?.addEventListener("submit", createAdminHomestay);
+    adminHomestayList?.addEventListener("click", handleAdminHomestayAction);
+    refreshHomestaysBtn?.addEventListener("click", loadAdminHomestays);
+    adminHomestayName?.addEventListener("input", () => {
+      if (!adminHomestaySlug || adminHomestaySlug.dataset.touched === "true") return;
+      adminHomestaySlug.value = normalizeAdminSlug(adminHomestayName.value);
+    });
+    adminHomestaySlug?.addEventListener("input", () => {
+      adminHomestaySlug.dataset.touched = "true";
+      adminHomestaySlug.value = normalizeAdminSlug(adminHomestaySlug.value);
     });
 
     // init
     document.addEventListener('DOMContentLoaded', () => {
-      setCompanyLoginState(true);
+      setAdminLoginState(true);
       renderCoPkgGrid();
       applyBrandAssets(normalizeSettings(typeof localGetSettings === "function" ? localGetSettings() : DEFAULT_SETTINGS));
-      loadCompanyBrandAssets();
+      renderAdminTopbarTitle();
+      loadAdminBrandAssets();
+      loadAdminHomestays();
     });
   </script>
 </body>

@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>admin</title>
+  <title>จองห้องพัก</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
-  <link rel="icon" href="LOGO.jpg?v=2" type="image/jpeg" />
-  <link rel="shortcut icon" href="LOGO.jpg?v=2" type="image/jpeg" />
-  <link rel="apple-touch-icon" href="LOGO.jpg?v=2" />
+  <link rel="icon" href="default-home-logo.svg" type="image/svg+xml" />
+  <link rel="shortcut icon" href="default-home-logo.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="default-home-logo.svg" />
 </head>
 <body data-page-title-suffix="จองห้องพัก">
   <header class="topbar">
     <a class="brand" href="customer.html">
-      <img class="site-logo" src="LOGO.jpg" alt="โลโก้โฮมสเตย์" />
+      <img class="site-logo" src="default-home-logo.svg" alt="โลโก้โฮมสเตย์" />
       <div>
         <h1>โฮมสเตย์
         </h1>
@@ -149,36 +149,10 @@
         <section class="addon-section full">
           <div class="section-mini-head">
             <h4>บริการเสริม</h4>
-            <p>ราคาแก้ได้จากหน้า Admin หรือชีต Settings</p>
+            <p>ราคาแก้ได้จากหน้า Owner หรือชีต Settings</p>
           </div>
 
-          <div class="addon-grid">
-            <label class="addon-card" for="mookataCheckbox">
-              <div class="addon-left">
-                <input type="checkbox" id="mookataCheckbox" />
-                <div>
-                  <strong>หมูกระทะ</strong>
-                  <span id="mookataPriceText">กำลังโหลดราคา...</span>
-                </div>
-              </div>
-              <div class="qty-control" aria-label="จำนวนชุดหมูกระทะ">
-                <button type="button" id="mookataMinusBtn">−</button>
-                <b id="mookataQtyText">1</b>
-                <button type="button" id="mookataPlusBtn">+</button>
-              </div>
-            </label>
-
-            <label class="addon-card" for="extraBedCheckbox">
-              <div class="addon-left">
-                <input type="checkbox" id="extraBedCheckbox" />
-                <div>
-                  <strong>เตียงเสริม 1 เตียง</strong>
-                  <span id="extraBedPriceText">กำลังโหลดราคา...</span>
-                </div>
-              </div>
-              <em>เลือกได้ 1 เตียง</em>
-            </label>
-          </div>
+          <div class="addon-grid" id="addonGrid"></div>
         </section>
 
         <section class="payment-section full">
@@ -286,9 +260,9 @@
 
       <div class="booking-ticket" id="bookingTicket">
         <div class="ticket-brand">
-          <img class="site-logo" src="LOGO.jpg" alt="โลโก้โฮมสเตย์" />
+          <img class="site-logo" src="default-home-logo.svg" alt="โลโก้โฮมสเตย์" />
           <div>
-            <h4>GreenStay Homestay</h4>
+            <h4>ชื่อที่พัก</h4>
             <p>ใช้ยื่นตอนเข้าพัก</p>
           </div>
         </div>

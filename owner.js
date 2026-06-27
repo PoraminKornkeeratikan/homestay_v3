@@ -1,29 +1,30 @@
 let cachedBookings = [];
 let rooms = [];
 let settings = normalizeSettings(DEFAULT_SETTINGS);
-let adminCalendarDate = new Date();
-let adminSelectedDateKey = "";
+let ownerCalendarDate = new Date();
+let ownerSelectedDateKey = "";
 let roomCloseTargetId = "";
 let roomCloseCalendarDate = new Date();
 let roomCloseSelectedDate = "";
 
-const adminLoginBox = document.getElementById("adminLoginBox");
-const adminDashboard = document.getElementById("adminDashboard");
+const ownerLoginBox = document.getElementById("ownerLoginBox");
+const ownerDashboard = document.getElementById("ownerDashboard");
 const loginBtn = document.getElementById("loginBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const refreshBtn = document.getElementById("refreshBtn");
-const adminPassword = document.getElementById("adminPassword");
+const ownerPassword = document.getElementById("ownerPassword");
+let ownerLoginHomestay = document.getElementById("ownerLoginHomestay");
 const bookingTable = document.getElementById("bookingTable");
 const roomTable = document.getElementById("roomTable");
 const searchBooking = document.getElementById("searchBooking");
 const statusFilter = document.getElementById("statusFilter");
 const exportCsvBtn = document.getElementById("exportCsvBtn");
-const adminPrevMonthBtn = document.getElementById("adminPrevMonthBtn");
-const adminNextMonthBtn = document.getElementById("adminNextMonthBtn");
-const adminCalendarMonthText = document.getElementById("adminCalendarMonthText");
-const adminCalendarGrid = document.getElementById("adminCalendarGrid");
-const adminSelectedDateText = document.getElementById("adminSelectedDateText");
-const adminDateDetailList = document.getElementById("adminDateDetailList");
+const ownerPrevMonthBtn = document.getElementById("ownerPrevMonthBtn");
+const ownerNextMonthBtn = document.getElementById("ownerNextMonthBtn");
+const ownerCalendarMonthText = document.getElementById("ownerCalendarMonthText");
+const ownerCalendarGrid = document.getElementById("ownerCalendarGrid");
+const ownerSelectedDateText = document.getElementById("ownerSelectedDateText");
+const ownerDateDetailList = document.getElementById("ownerDateDetailList");
 const roomCloseModal = document.getElementById("roomCloseModal");
 const roomCloseTitle = document.getElementById("roomCloseTitle");
 const roomCloseNote = document.getElementById("roomCloseNote");
@@ -49,6 +50,8 @@ const settingLogoFileName = document.getElementById("settingLogoFileName");
 const settingLogoPreview = document.getElementById("settingLogoPreview");
 const settingPropertyPolicy = document.getElementById("settingPropertyPolicy");
 const settingPaymentNote = document.getElementById("settingPaymentNote");
+const settingAddonList = document.getElementById("settingAddonList");
+const addSettingAddonBtn = document.getElementById("addSettingAddonBtn");
 
 const roomForm = document.getElementById("roomForm");
 const roomNameInput = document.getElementById("roomNameInput");
@@ -63,6 +66,29 @@ function formatMultiline(value) {
   return escapeHtml(value || "").replace(/\r?\n/g, "<br>");
 }
 
+function getOwnerLoginHomestayElement() {
+  if (ownerLoginHomestay) return ownerLoginHomestay;
+
+  const loginCard = ownerLoginBox?.querySelector(".login-card");
+  const passwordInput = document.getElementById("ownerPassword");
+  if (!loginCard || !passwordInput) return null;
+
+  ownerLoginHomestay = document.createElement("p");
+  ownerLoginHomestay.id = "ownerLoginHomestay";
+  ownerLoginHomestay.className = "owner-login-homestay";
+  loginCard.insertBefore(ownerLoginHomestay, passwordInput);
+  return ownerLoginHomestay;
+}
+
+function updateOwnerLoginHomestayLabel(name) {
+  const el = getOwnerLoginHomestayElement();
+  if (!el) return;
+
+  const slug = typeof getCurrentHomestaySlug === "function" ? getCurrentHomestaySlug() : "";
+  const displayName = String(name || settings.siteName?.value || slug || "โฮมสเตย์").trim();
+  const slugText = slug && slug !== displayName ? ` (${slug})` : "";
+  el.textContent = `กำลังล็อกอินของ: ${displayName}${slugText}`;
+}
 
 function ensureLoadingPopup() {
   let popup = document.getElementById("appLoadingPopup");
@@ -153,7 +179,7 @@ function renderImageBlock(imageUrl, altText, className = "room-img") {
   `;
 }
 
-function renderAdminDetailPreview(detail, roomName = "") {
+function renderOwnerDetailPreview(detail, roomName = "") {
   let text = String(detail || "")
     .replace(/\\n/g, "\n")
     .trim();
@@ -163,12 +189,12 @@ function renderAdminDetailPreview(detail, roomName = "") {
     text = text.replace(namePattern, "").trim();
   }
 
-  if (!text) return `<div class="admin-room-detail-preview">ยังไม่มีรายละเอียด</div>`;
+  if (!text) return `<div class="owner-room-detail-preview">ยังไม่มีรายละเอียด</div>`;
 
-  return `<div class="admin-room-detail-preview">${escapeHtml(text).replace(/\r?\n/g, "<br>")}</div>`;
+  return `<div class="owner-room-detail-preview">${escapeHtml(text).replace(/\r?\n/g, "<br>")}</div>`;
 }
 
-function renderAdminImageBlock(imageUrl, altText) {
+function renderOwnerImageBlock(imageUrl, altText) {
   const url = String(imageUrl || "").trim();
   if (!url) return `<div class="room-thumb image-missing"><span>ไม่มีรูป</span></div>`;
 
@@ -220,23 +246,49 @@ async function loadDashboard(silent = false) {
     rooms = normalizeRooms(payload.rooms || []);
     settings = normalizeSettings(payload.settings || {});
     applyBrandAssets(settings);
-    if (!adminSelectedDateKey) {
-      adminSelectedDateKey = toDateKey(new Date());
-      adminCalendarDate = new Date();
+    updateOwnerLoginHomestayLabel();
+    if (!ownerSelectedDateKey) {
+      ownerSelectedDateKey = toDateKey(new Date());
+      ownerCalendarDate = new Date();
     }
 
     renderSettingsForm();
     renderRoomTable();
-    renderAdminCalendar();
-    renderDateDetails(adminSelectedDateKey);
+    renderOwnerCalendar();
+    renderDateDetails(ownerSelectedDateKey);
     renderBookingTable();
     renderPrepSections();
     autoVerifyPendingSlips();
   } catch (error) {
     console.error(error);
+    if (typeof resetLocalPlanState === "function") {
+      resetLocalPlanState();
+      renderCreditCard();
+      renderHeaderCredit();
+    }
     showToast("โหลดข้อมูลไม่สำเร็จ ตรวจ URL / สิทธิ์ Web App");
   } finally {
     if (!silent) setTimeout(hideLoadingPopup, 350);
+  }
+}
+
+async function syncOwnerPlanOnPageLoad() {
+  try {
+    const result = await apiRequest({ action: "bootstrap" });
+    if (!result.ok) throw new Error(result.message || "โหลดเครดิตไม่สำเร็จ");
+    const payload = result.data || result;
+    if (payload.settings) {
+      settings = normalizeSettings(payload.settings || {});
+      applyBrandAssets(settings);
+    }
+    updateOwnerLoginHomestayLabel();
+  } catch (error) {
+    console.warn("Plan sync failed; clearing stale local credits:", error?.message);
+    if (typeof resetLocalPlanState === "function") resetLocalPlanState();
+    updateOwnerLoginHomestayLabel();
+  } finally {
+    renderCreditCard();
+    renderHeaderCredit();
   }
 }
 
@@ -244,6 +296,7 @@ function renderSettingsForm() {
   settingSiteName.value = settings.siteName?.value || DEFAULT_SETTINGS.siteName.value;
   settingMookataPrice.value = settings.mookata.price || 0;
   settingExtraBedPrice.value = settings.extraBed.price || 0;
+  renderAddonSettingsForm();
   settingBankName.value = settings.bankName.value || "";
   settingBankAccountName.value = settings.bankAccountName.value || "";
   settingBankAccountNumber.value = settings.bankAccountNumber.value || "";
@@ -260,6 +313,85 @@ function renderSettingsForm() {
   clearImagePreview(settingLogoPreview);
   settingPropertyPolicy.value = settings.propertyPolicy?.value || "";
   if (settingPaymentNote) settingPaymentNote.value = settings.paymentNote.value || "";
+}
+
+function renderAddonSettingsForm() {
+  if (!settingAddonList) return;
+  const items = normalizeAddonItems(settings.addons?.items, settings);
+  settingAddonList.innerHTML = items.map(item => `
+    <div class="setting-addon-row" data-addon-row>
+      <input type="hidden" data-addon-id value="${escapeHtml(item.id)}" />
+      <div class="field compact">
+        <label>ชื่อบริการ</label>
+        <input type="text" data-addon-name value="${escapeHtml(item.name)}" placeholder="เช่น หมูกระทะ" />
+      </div>
+      <div class="field compact">
+        <label>ราคา</label>
+        <input type="number" data-addon-price min="0" value="${Number(item.price || 0)}" />
+      </div>
+      <div class="field compact">
+        <label>หน่วย</label>
+        <input type="text" data-addon-unit value="${escapeHtml(item.unit || "รายการ")}" placeholder="ชุด / เตียง" />
+      </div>
+      <label class="setting-addon-active">
+        <input type="checkbox" data-addon-active ${item.active !== false ? "checked" : ""} />
+        เปิดใช้
+      </label>
+      <button type="button" class="setting-addon-remove" onclick="removeSettingAddonRow(this)">ลบ</button>
+    </div>
+  `).join("");
+}
+
+function addSettingAddonRow() {
+  if (!settingAddonList) return;
+  const row = document.createElement("div");
+  row.className = "setting-addon-row";
+  row.dataset.addonRow = "";
+  row.innerHTML = `
+    <input type="hidden" data-addon-id value="addon_${Date.now()}" />
+    <div class="field compact">
+      <label>ชื่อบริการ</label>
+      <input type="text" data-addon-name placeholder="เช่น อาหารเช้า" />
+    </div>
+    <div class="field compact">
+      <label>ราคา</label>
+      <input type="number" data-addon-price min="0" value="0" />
+    </div>
+    <div class="field compact">
+      <label>หน่วย</label>
+      <input type="text" data-addon-unit value="รายการ" />
+    </div>
+    <label class="setting-addon-active">
+      <input type="checkbox" data-addon-active checked />
+      เปิดใช้
+    </label>
+    <button type="button" class="setting-addon-remove" onclick="removeSettingAddonRow(this)">ลบ</button>
+  `;
+  settingAddonList.appendChild(row);
+  row.querySelector("[data-addon-name]")?.focus();
+}
+
+function removeSettingAddonRow(button) {
+  button?.closest("[data-addon-row]")?.remove();
+}
+
+function getAddonSettingsFromForm() {
+  const rows = Array.from(settingAddonList?.querySelectorAll("[data-addon-row]") || []);
+  return normalizeAddonItems(rows.map((row, index) => ({
+    id: row.querySelector("[data-addon-id]")?.value || `addon_${index + 1}`,
+    name: row.querySelector("[data-addon-name]")?.value || "",
+    price: Number(row.querySelector("[data-addon-price]")?.value || 0),
+    unit: row.querySelector("[data-addon-unit]")?.value || "รายการ",
+    active: row.querySelector("[data-addon-active]")?.checked !== false
+  })), settings);
+}
+
+function syncLegacyAddonPrice(addonId, price) {
+  const row = Array.from(settingAddonList?.querySelectorAll("[data-addon-row]") || [])
+    .find(item => item.querySelector("[data-addon-id]")?.value === addonId);
+  if (!row) return;
+  const input = row.querySelector("[data-addon-price]");
+  if (input) input.value = Number(price || 0);
 }
 
 async function saveSettings(event) {
@@ -296,15 +428,21 @@ async function saveSettings(event) {
     };
   }
 
+  const addonItems = getAddonSettingsFromForm();
+  const mookataAddon = addonItems.find(item => item.id === "mookata") || { name: "หมูกระทะ", price: 0 };
+  const extraBedAddon = addonItems.find(item => item.id === "extra_bed") || { name: "เตียงเสริม", price: 0 };
+
   const newSettings = {
     siteName: { label: "ชื่อเว็บไซต์", value: settingSiteName.value.trim() || DEFAULT_SETTINGS.siteName.value },
     logoUrl: logoSetting,
-    mookata: { label: "หมูกระทะ", price: Number(settingMookataPrice.value || 0) },
-    extraBed: { label: "เตียงเสริม", price: Number(settingExtraBedPrice.value || 0) },
+    mookata: { label: mookataAddon.name || "หมูกระทะ", price: Number(mookataAddon.price || 0) },
+    extraBed: { label: extraBedAddon.name || "เตียงเสริม", price: Number(extraBedAddon.price || 0) },
+    addons: { label: "บริการเสริม", items: addonItems },
     bankName: { label: "ธนาคาร", value: settingBankName.value.trim() },
     bankAccountName: { label: "ชื่อบัญชี", value: settingBankAccountName.value.trim() },
     bankAccountNumber: { label: "เลขบัญชี", value: settingBankAccountNumber.value.trim() },
     promptPayId: { label: "เลขพร้อมเพย์", value: settingPromptPayId?.value.trim() || "" },
+    bookingFee: settings.bookingFee || DEFAULT_SETTINGS.bookingFee,
     pageUrl: { label: "ลิงก์เพจ", value: settingPageUrl.value.trim() },
     gpsUrl: { label: "ลิงก์ GPS", value: settingGpsUrl.value.trim() },
     paymentNote: { label: "หมายเหตุชำระเงิน", value: settingPaymentNote?.value.trim() || "" },
@@ -453,11 +591,11 @@ function renderRoomTable() {
       <td>
         <input class="inline-input" type="number" id="room-price-${room.id}" value="${Number(room.price || 0)}" />
       </td>
-      <td class="room-detail-admin-cell">
+      <td class="room-detail-owner-cell">
         <textarea class="inline-input inline-textarea" id="room-detail-${room.id}" rows="6">${escapeHtml(room.detail || "")}</textarea>
       </td>
-      <td class="room-image-admin-cell">
-        ${renderAdminImageBlock(room.image || "", room.name)}
+      <td class="room-image-owner-cell">
+        ${renderOwnerImageBlock(room.image || "", room.name)}
         <label class="inline-file-box" for="room-image-file-${room.id}">
           <input type="file" id="room-image-file-${room.id}" accept="image/jpeg,image/png,image/webp" multiple onchange="updateRoomTableFileName('${room.id}')" />
           <span>อัปโหลดรูปใหม่</span>
@@ -501,32 +639,32 @@ function renderRoomTable() {
     const closedUntil = String(room.closedUntil || "").trim();
 
     return `
-      <article class="room-admin-card ${isOpen ? "" : "is-closed"}">
-        <div class="room-admin-media">
-          ${renderAdminImageBlock(room.image || "", room.name)}
+      <article class="room-owner-card ${isOpen ? "" : "is-closed"}">
+        <div class="room-owner-media">
+          ${renderOwnerImageBlock(room.image || "", room.name)}
         </div>
 
-        <div class="room-admin-main">
-          <div class="room-admin-top">
-            <div class="room-admin-title">
+        <div class="room-owner-main">
+          <div class="room-owner-top">
+            <div class="room-owner-title">
               <span>ห้องพัก</span>
               <input class="inline-input room-title-input" id="room-name-${room.id}" value="${escapeHtml(room.name)}" />
             </div>
             <span class="status ${isOpen ? "confirmed" : "cancelled"}">${roomStatusText(room)}</span>
           </div>
 
-          <div class="room-admin-fields">
-            <label class="room-admin-field price-field">
+          <div class="room-owner-fields">
+            <label class="room-owner-field price-field">
               <span>ราคา / คืน</span>
               <input class="inline-input" type="number" id="room-price-${room.id}" value="${Number(room.price || 0)}" />
             </label>
 
-            <label class="room-admin-field detail-field">
+            <label class="room-owner-field detail-field">
               <span>รายละเอียด</span>
               <textarea class="inline-input inline-textarea" id="room-detail-${room.id}" rows="5">${escapeHtml(room.detail || "")}</textarea>
             </label>
 
-            <div class="room-admin-field upload-field">
+            <div class="room-owner-field upload-field">
               <span>รูปภาพ</span>
               <label class="inline-file-box" for="room-image-file-${room.id}">
                 <input type="file" id="room-image-file-${room.id}" accept="image/jpeg,image/png,image/webp" multiple onchange="updateRoomTableFileName('${room.id}')" />
@@ -784,6 +922,16 @@ function formatThaiDate(value) {
   });
 }
 
+function formatOwnerShortDate(value) {
+  if (!value) return "-";
+  const date = fromDateKey(value);
+  if (Number.isNaN(date.getTime())) return String(value || "-");
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = String(date.getFullYear()).slice(-2);
+  return `${day}/${month}/${year}`;
+}
+
 function isRoomOpenOnDate(room, dateKey) {
   if (!room) return false;
   if (room.active) return true;
@@ -824,15 +972,55 @@ function getAvailableRoomsForDate(dateKey) {
   return rooms.filter(room => isRoomOpenOnDate(room, dateKey) && !bookedRoomIds.has(String(room.id)));
 }
 
-function renderAdminCalendar() {
-  if (!adminCalendarGrid) return;
+function getBookingAddonItems(booking = {}) {
+  const items = normalizeBookingAddonItems(booking.addonItems);
+  if (items.length) return items;
 
-  const year = adminCalendarDate.getFullYear();
-  const month = adminCalendarDate.getMonth();
+  const fallback = [];
+  const mookataQty = Number(booking.mookataQty || 0);
+  const extraBedQty = Number(booking.extraBedQty || 0);
+
+  if (mookataQty > 0) {
+    fallback.push({
+      id: "mookata",
+      name: "หมูกระทะ",
+      unit: "ชุด",
+      qty: mookataQty,
+      price: Number(booking.mookataPrice || 0),
+      total: mookataQty * Number(booking.mookataPrice || 0)
+    });
+  }
+
+  if (extraBedQty > 0) {
+    fallback.push({
+      id: "extra_bed",
+      name: "เตียงเสริม",
+      unit: "เตียง",
+      qty: extraBedQty,
+      price: Number(booking.extraBedPrice || 0),
+      total: extraBedQty * Number(booking.extraBedPrice || 0)
+    });
+  }
+
+  return fallback;
+}
+
+function getBookingAddonLines(booking = {}) {
+  return getBookingAddonItems(booking).map(item => {
+    const qtyText = Number(item.qty || 0) > 1 ? ` ${item.qty} ${item.unit || "รายการ"}` : "";
+    return `${item.name}${qtyText} ${formatMoney(item.total || (item.qty * item.price))}`;
+  });
+}
+
+function renderOwnerCalendar() {
+  if (!ownerCalendarGrid) return;
+
+  const year = ownerCalendarDate.getFullYear();
+  const month = ownerCalendarDate.getMonth();
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
 
-  adminCalendarMonthText.textContent = firstDay.toLocaleDateString("th-TH", {
+  ownerCalendarMonthText.textContent = firstDay.toLocaleDateString("th-TH", {
     month: "long",
     year: "numeric"
   });
@@ -851,42 +1039,42 @@ function renderAdminCalendar() {
     const availableRoomCount = getAvailableRoomsForDate(key).length;
 
     const classes = ["calendar-day", hasBooking ? "booked" : "available"];
-    if (key === adminSelectedDateKey) classes.push("selected-start");
+    if (key === ownerSelectedDateKey) classes.push("selected-start");
 
     const badge = hasBooking ? `${dayBookings.length} จอง` : "ว่าง";
     const roomText = `${availableRoomCount} ห้องว่าง`;
 
     cells.push(`
-      <button type="button" class="${classes.join(" ")}" onclick="selectAdminCalendarDate('${key}')">
-        <strong class="admin-day-number">${day}</strong>
-        <span class="admin-day-status">${badge}</span>
-        <small class="admin-day-room">${roomText}</small>
+      <button type="button" class="${classes.join(" ")}" onclick="selectOwnerCalendarDate('${key}')">
+        <strong class="owner-day-number">${day}</strong>
+        <span class="owner-day-status">${badge}</span>
+        <small class="owner-day-room">${roomText}</small>
       </button>
     `);
   }
 
-  adminCalendarGrid.innerHTML = cells.join("");
+  ownerCalendarGrid.innerHTML = cells.join("");
 }
 
-function selectAdminCalendarDate(dateKey) {
-  adminSelectedDateKey = dateKey;
-  renderAdminCalendar();
+function selectOwnerCalendarDate(dateKey) {
+  ownerSelectedDateKey = dateKey;
+  renderOwnerCalendar();
   renderDateDetails(dateKey);
 }
 
 function renderDateDetails(dateKey) {
-  if (!adminDateDetailList) return;
+  if (!ownerDateDetailList) return;
 
   if (!dateKey) {
-    adminSelectedDateText.textContent = "ยังไม่เลือกวันที่";
-    adminDateDetailList.innerHTML = `<div class="empty">กดวันที่ในปฏิทินเพื่อดูรายละเอียดลูกค้าที่จอง</div>`;
+    ownerSelectedDateText.textContent = "ยังไม่เลือกวันที่";
+    ownerDateDetailList.innerHTML = `<div class="empty">กดวันที่ในปฏิทินเพื่อดูรายละเอียดลูกค้าที่จอง</div>`;
     return;
   }
 
   const dayBookings = getBookingsForDate(dateKey);
   const availableRooms = getAvailableRoomsForDate(dateKey);
 
-  adminSelectedDateText.textContent = formatThaiDate(dateKey);
+  ownerSelectedDateText.textContent = formatThaiDate(dateKey);
 
   const availableHtml = `
     <div class="date-available-box">
@@ -896,7 +1084,7 @@ function renderDateDetails(dateKey) {
   `;
 
   if (!dayBookings.length) {
-    adminDateDetailList.innerHTML = `
+    ownerDateDetailList.innerHTML = `
       ${availableHtml}
       <div class="empty">วันนี้ยังไม่มีลูกค้าจอง</div>
     `;
@@ -904,10 +1092,7 @@ function renderDateDetails(dateKey) {
   }
 
   const bookingHtml = dayBookings.map(booking => {
-    const addons = [];
-    if (Number(booking.mookataQty || 0) > 0) addons.push(`หมูกระทะ ${booking.mookataQty} ชุด`);
-    if (Number(booking.extraBedQty || 0) > 0) addons.push(`เตียงเสริม ${booking.extraBedQty} เตียง`);
-
+    const addons = getBookingAddonLines(booking);
     return `
       <article class="date-booking-card">
         <div class="date-booking-top">
@@ -928,7 +1113,7 @@ function renderDateDetails(dateKey) {
           <div>
             <span>ห้องพัก</span>
             <b>${escapeHtml(booking.roomName || "-")}</b>
-            <small>${escapeHtml(booking.checkIn)} → ${escapeHtml(booking.checkOut)}</small>
+            <small>${escapeHtml(formatOwnerShortDate(booking.checkIn))} → ${escapeHtml(formatOwnerShortDate(booking.checkOut))}</small>
           </div>
           <div>
             <span>บริการเสริม</span>
@@ -948,7 +1133,7 @@ function renderDateDetails(dateKey) {
     `;
   }).join("");
 
-  adminDateDetailList.innerHTML = availableHtml + bookingHtml;
+  ownerDateDetailList.innerHTML = availableHtml + bookingHtml;
 }
 
 function renderSlipCheck(label, check) {
@@ -1088,29 +1273,17 @@ function renderBookingTable() {
   );
 
   if (!filtered.length) {
-    bookingTable.innerHTML = `<tr><td colspan="7" class="empty">ยังไม่มีรายการจอง</td></tr>`;
+    bookingTable.innerHTML = `<tr><td colspan="5" class="empty">ยังไม่มีรายการจอง</td></tr>`;
     return;
   }
 
   bookingTable.innerHTML = filtered.map(booking => {
-    const mookataQty = Number(booking.mookataQty || 0);
-    const extraBedQty = Number(booking.extraBedQty || 0);
-    const addonLines = [];
+    const addonLines = getBookingAddonLines(booking);
     const slipVerifyHtml = renderSlipVerifyStatus(booking);
     const slipPreviewHtml = renderPaymentSlipPreview(booking);
     const guestCount = Number(booking.guestCount || 1);
     const grandTotal = Number(booking.grandTotal || booking.total || 0);
     const roomTotal = Number(booking.roomTotal || 0);
-    const addonTotal = Number(booking.addonTotal || 0);
-    const bookingFee = Number(booking.bookingFee || 0);
-    if (mookataQty > 0) {
-      addonLines.push(`หมูกระทะ ${mookataQty} ชุด × ${formatMoney(booking.mookataPrice)}`);
-    }
-
-    if (extraBedQty > 0) {
-      addonLines.push(`เตียงเสริม ${extraBedQty} เตียง × ${formatMoney(booking.extraBedPrice)}`);
-    }
-
     return `
       <tr class="booking-detail-row">
         <td class="booking-guest-cell">
@@ -1127,9 +1300,9 @@ function renderBookingTable() {
         <td class="booking-stay-cell">
           <div class="booking-room-title">${escapeHtml(booking.roomName || "-")}</div>
           <div class="booking-date-range">
-            <span>${escapeHtml(booking.checkIn || "-")}</span>
+            <span>${escapeHtml(formatOwnerShortDate(booking.checkIn))}</span>
             <i>→</i>
-            <span>${escapeHtml(booking.checkOut || "-")}</span>
+            <span>${escapeHtml(formatOwnerShortDate(booking.checkOut))}</span>
           </div>
           <div class="booking-meta-grid">
             <span>${Number(booking.nights || 0)} คืน</span>
@@ -1137,14 +1310,12 @@ function renderBookingTable() {
           </div>
           <div class="booking-cost-lines">
             <span><em>ค่าห้อง</em><b>${formatMoney(roomTotal)}</b></span>
-            <span><em>ค่าจอง</em><b>${formatMoney(bookingFee)}</b></span>
+            <span>
+              <em>ค่าบริการเสริม</em>
+              <b>${addonLines.length ? escapeHtml(addonLines.join(", ")) : "ไม่มี"}</b>
+            </span>
+            <span class="booking-grand-line"><em>ยอดรวม</em><b>${formatMoney(grandTotal)}</b></span>
           </div>
-        </td>
-        <td class="booking-addon-cell">
-          <div class="booking-addon-tags">
-            ${addonLines.length ? addonLines.map(line => `<span>${escapeHtml(line)}</span>`).join("") : `<span class="muted">ไม่มีบริการเสริม</span>`}
-          </div>
-          <div class="booking-addon-total">รวม ${formatMoney(addonTotal)}</div>
         </td>
         <td class="booking-payment-cell">
           <div class="owner-payment-cell">
@@ -1152,10 +1323,6 @@ function renderBookingTable() {
             ${slipPreviewHtml}
             ${slipVerifyHtml}
           </div>
-        </td>
-        <td class="booking-total-cell">
-          <b>${formatMoney(grandTotal)}</b>
-          <small>ยอดชำระทั้งหมด</small>
         </td>
         <td class="booking-status-cell">
           <span class="status ${statusClass(booking.status)}">${escapeHtml(booking.status || "-")}</span>
@@ -1222,14 +1389,14 @@ function exportCsv() {
   const header = [
     "เลขรายการจอง", "ชื่อ", "เบอร์โทร", "อีเมล", "ห้อง", "เช็กอิน", "เช็กเอาต์", "จำนวนคืน", "ผู้เข้าพัก",
     "หมูกระทะจำนวน", "ราคาหมูกระทะ", "เตียงเสริมจำนวน", "ราคาเตียงเสริม",
-    "ค่าห้อง", "ค่าบริการเสริม", "ค่าจอง", "ยอดรวม", "วิธีชำระ", "สถานะชำระ", "ไฟล์สลิป",
+    "บริการเสริม", "ค่าห้อง", "ค่าบริการเสริม", "ค่าจอง", "ยอดรวม", "วิธีชำระ", "สถานะชำระ", "ไฟล์สลิป",
     "ลิงก์สลิป", "สถานะจอง", "หมายเหตุ"
   ];
 
   const rows = cachedBookings.map(b => [
     b.bookingCode, b.name, b.phone, b.email, b.roomName, b.checkIn, b.checkOut, b.nights, b.guestCount,
     b.mookataQty, b.mookataPrice, b.extraBedQty, b.extraBedPrice,
-    b.roomTotal, b.addonTotal, b.bookingFee, b.grandTotal, b.paymentMethod, b.paymentStatus,
+    getBookingAddonLines(b).join(", "), b.roomTotal, b.addonTotal, b.bookingFee, b.grandTotal, b.paymentMethod, b.paymentStatus,
     b.slipFileName, b.slipUrl, b.status, b.note
   ]);
 
@@ -1257,16 +1424,19 @@ settingSiteName.addEventListener("input", () => {
   document.title = suffix ? `${previewName} - ${suffix}` : previewName;
 });
 settingLogoFileInput.addEventListener("change", updateLogoChoiceState);
+addSettingAddonBtn?.addEventListener("click", addSettingAddonRow);
+settingMookataPrice?.addEventListener("input", () => syncLegacyAddonPrice("mookata", settingMookataPrice.value));
+settingExtraBedPrice?.addEventListener("input", () => syncLegacyAddonPrice("extra_bed", settingExtraBedPrice.value));
 
-if (adminPrevMonthBtn && adminNextMonthBtn) {
-  adminPrevMonthBtn.addEventListener("click", () => {
-    adminCalendarDate = new Date(adminCalendarDate.getFullYear(), adminCalendarDate.getMonth() - 1, 1);
-    renderAdminCalendar();
+if (ownerPrevMonthBtn && ownerNextMonthBtn) {
+  ownerPrevMonthBtn.addEventListener("click", () => {
+    ownerCalendarDate = new Date(ownerCalendarDate.getFullYear(), ownerCalendarDate.getMonth() - 1, 1);
+    renderOwnerCalendar();
   });
 
-  adminNextMonthBtn.addEventListener("click", () => {
-    adminCalendarDate = new Date(adminCalendarDate.getFullYear(), adminCalendarDate.getMonth() + 1, 1);
-    renderAdminCalendar();
+  ownerNextMonthBtn.addEventListener("click", () => {
+    ownerCalendarDate = new Date(ownerCalendarDate.getFullYear(), ownerCalendarDate.getMonth() + 1, 1);
+    renderOwnerCalendar();
   });
 }
 
@@ -1296,7 +1466,7 @@ document.addEventListener("keydown", event => {
 
 
 
-// ======= CREDIT SYSTEM (Admin) - v2 =======
+// ======= CREDIT SYSTEM (Owner) - v2 =======
 
 // --- localStorage keys ---
 // hs_credits, hs_plan_type, hs_plan_start  (จาก app-config.js)
@@ -1419,7 +1589,7 @@ function openTopupModal() {
     </div>`;
   }).join("");
 
-  // Credit package topups use the company PromptPay account, separate from the homestay room-payment account.
+  // Credit package topups use the admin PromptPay account, separate from the homestay room-payment account.
   const topupSettings = typeof TOPUP_PAYMENT_SETTINGS !== "undefined"
     ? TOPUP_PAYMENT_SETTINGS
     : normalizeSettings(settings || DEFAULT_SETTINGS);
@@ -1550,39 +1720,65 @@ function sendTopupRequest() {
 
   document.getElementById("topupStep1").classList.add("hidden");
   document.getElementById("topupStep2").classList.remove("hidden");
-  showToast("ส่งคำขอเรียบร้อย รอ Company อนุมัติ");
+  showToast("ส่งคำขอเรียบร้อย รอ Admin อนุมัติ");
   checkPendingRequest();
 }
 
-// Auto-check ถ้า Company อนุมัติแล้ว (poll ทุก 5 วินาที)
-setInterval(() => {
+// Auto-check ถ้า Admin อนุมัติแล้ว (poll ทุก 5 วินาที)
+setInterval(async () => {
   const reqs = getTopupRequests();
   const approved = reqs.filter(r => r.status === "approved");
   if (approved.length) {
-    approved.forEach(r => {
-      if (r.type === "yearly") {
-        const start = new Date().toISOString().split("T")[0];
-        setPlan("yearly", start);
-        showToast(`✅ Company อนุมัติแล้ว! เปิดใช้งานแพ็กเกจรายปีสำเร็จ`);
-      } else {
-        setCredits(getCredits() + r.credits);
-        showToast(`✅ Company อนุมัติแล้ว! ได้รับ ${r.credits} เครดิต`);
+    for (const r of approved) {
+      try {
+        if (r.type === "yearly") {
+          const start = new Date().toISOString();
+          const expiry = new Date(start);
+          expiry.setFullYear(expiry.getFullYear() + 1);
+          const result = await apiRequest({
+            action: "updatePlan",
+            plan: {
+              planType: "yearly",
+              credits: getCredits(),
+              planStartedAt: start,
+              planExpiresAt: expiry.toISOString(),
+              status: "active"
+            }
+          });
+          if (!result.ok) throw new Error(result.message || "บันทึกแพ็กเกจรายปีไม่สำเร็จ");
+          showToast(`✅ Admin อนุมัติแล้ว! เปิดใช้งานแพ็กเกจรายปีสำเร็จ`);
+        } else {
+          const nextCredits = getCredits() + Number(r.credits || 0);
+          const result = await apiRequest({
+            action: "updatePlan",
+            plan: {
+              planType: "credit",
+              credits: nextCredits,
+              status: "active"
+            }
+          });
+          if (!result.ok) throw new Error(result.message || "บันทึกเครดิตไม่สำเร็จ");
+          showToast(`✅ Admin อนุมัติแล้ว! ได้รับ ${r.credits} เครดิต`);
+        }
+        r.status = "done";
+      } catch (error) {
+        console.error(error);
+        showToast("บันทึกเครดิตไม่สำเร็จ กรุณาลองใหม่");
       }
-      r.status = "done";
-    });
+    }
     saveTopupRequests(reqs);
     renderCreditCard(); renderHeaderCredit();
   }
 }, 5000);
 
 function updateHeaderVisibility() {
-  document.body.classList.toggle('login-hidden', !adminDashboard || adminDashboard.classList.contains('hidden'));
+  document.body.classList.toggle('login-hidden', !ownerDashboard || ownerDashboard.classList.contains('hidden'));
 }
 
 loginBtn.addEventListener("click", async () => {
-  if (adminPassword.value === ADMIN_PASSWORD) {
-    adminLoginBox.classList.add("hidden");
-    adminDashboard.classList.remove("hidden");
+  if (ownerPassword.value === OWNER_PASSWORD) {
+    ownerLoginBox.classList.add("hidden");
+    ownerDashboard.classList.remove("hidden");
     updateHeaderVisibility();
     await loadDashboard();
     renderCreditCard(); renderHeaderCredit();
@@ -1593,9 +1789,10 @@ loginBtn.addEventListener("click", async () => {
 });
 
 logoutBtn.addEventListener("click", () => {
-  adminPassword.value = "";
-  adminDashboard.classList.add("hidden");
-  adminLoginBox.classList.remove("hidden");
+  ownerPassword.value = "";
+  ownerDashboard.classList.add("hidden");
+  ownerLoginBox.classList.remove("hidden");
+  updateOwnerLoginHomestayLabel();
   updateHeaderVisibility();
 });
 
@@ -1610,8 +1807,8 @@ updateHeaderVisibility();
 
 document.addEventListener("DOMContentLoaded", function(){
   applyBrandAssets(normalizeSettings(typeof localGetSettings === "function" ? localGetSettings() : DEFAULT_SETTINGS));
-  renderCreditCard();
-  renderHeaderCredit();
+  updateOwnerLoginHomestayLabel();
+  syncOwnerPlanOnPageLoad();
 });
 
 // ===== HEADER CREDIT DISPLAY =====
@@ -1679,7 +1876,7 @@ function renderPrepDay(dateKey, bodyId) {
 
   const bookings = cachedBookings.filter(b => {
     if (isCancelledBooking(b)) return false;
-    return b.checkIn === dateKey && (Number(b.mookataQty || 0) > 0 || Number(b.extraBedQty || 0) > 0);
+    return b.checkIn === dateKey && getBookingAddonItems(b).length > 0;
   });
 
   if (!bookings.length) {
@@ -1688,11 +1885,11 @@ function renderPrepDay(dateKey, bodyId) {
   }
 
   body.innerHTML = bookings.map(b => {
-    const moo = Number(b.mookataQty || 0);
-    const bed = Number(b.extraBedQty || 0);
-    const addons = [];
-    if (moo > 0) addons.push('<span class="prep-addon-tag">🍖 หมูกระทะ ' + moo + ' ชุด</span>');
-    if (bed > 0) addons.push('<span class="prep-addon-tag bed">🛏 เตียงเสริม ' + bed + ' เตียง</span>');
+    const addons = getBookingAddonItems(b).map(item =>
+      '<span class="prep-addon-tag">' +
+      escapeHtml(item.name + ' ' + item.qty + ' ' + (item.unit || 'รายการ')) +
+      '</span>'
+    );
     return '<div class="prep-item">' +
       '<span class="prep-booking-code">' + escapeHtml(b.bookingCode || b.id || '-') + '</span>' +
       '<div style="flex:1;min-width:0">' +

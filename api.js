@@ -65,6 +65,24 @@ function getCurrentHomestaySlug() {
   ).trim();
 }
 
+function normalizeHomestaySlug(value, fallback = "homestay") {
+  const slug = String(value || fallback || "homestay")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return slug || `homestay-${Date.now()}`;
+}
+
+function isSchemaColumnError(error) {
+  return /schema cache|column|Could not find|does not exist/i.test(String(error?.message || ""));
+}
+
+function isDuplicateRowError(error) {
+  return /duplicate|unique|already exists/i.test(String(error?.message || ""));
+}
+
 function supabaseBaseUrl() {
   return String(SUPABASE_URL || "").replace(/\/rest\/v1\/?$/, "").replace(/\/$/, "");
 }
@@ -112,12 +130,61 @@ async function supabaseFunctionRequest(functionName, payload = {}) {
   return data;
 }
 
+function normalizeAddonItems(items = [], fallbackSettings = {}) {
+  const source = Array.isArray(items) ? items : [];
+  const normalized = source
+    .map((item, index) => {
+      const name = String(item?.name || item?.label || "").trim();
+      const id = String(item?.id || name || `addon_${index + 1}`)
+        .trim()
+        .toLowerCase()
+        .replace(/[^\w-]+/g, "_")
+        .replace(/^_+|_+$/g, "");
+
+      return {
+        id: id || `addon_${index + 1}`,
+        name,
+        price: Math.max(0, Number(item?.price || 0)),
+        unit: String(item?.unit || "รายการ").trim() || "รายการ",
+        active: item?.active !== false
+      };
+    })
+    .filter(item => item.name);
+
+  if (normalized.length) return normalized;
+  return [];
+}
+
+function normalizeBookingAddonItems(items = []) {
+  return (Array.isArray(items) ? items : [])
+    .map(item => {
+      const qty = Math.max(0, Number(item?.qty || 0));
+      const price = Math.max(0, Number(item?.price || 0));
+      return {
+        id: String(item?.id || "").trim(),
+        name: String(item?.name || "").trim(),
+        unit: String(item?.unit || "รายการ").trim() || "รายการ",
+        qty,
+        price,
+        total: Math.max(0, Number(item?.total || qty * price || 0))
+      };
+    })
+    .filter(item => item.name && item.qty > 0);
+}
+
 function settingObjectFromRow(row = {}) {
   return normalizeSettings({
     siteName: { label: "ชื่อเว็บไซต์", value: row.site_name || DEFAULT_SETTINGS.siteName.value },
     logoUrl: { label: "โลโก้", value: row.logo_url || DEFAULT_SETTINGS.logoUrl.value },
     mookata: { label: "หมูกระทะ", price: Number(row.mookata_price || 0) },
     extraBed: { label: "เตียงเสริม", price: Number(row.extra_bed_price || 0) },
+    addons: {
+      label: "บริการเสริม",
+      items: normalizeAddonItems(row.extra_addons, {
+        mookata: { label: "หมูกระทะ", price: Number(row.mookata_price || 0) },
+        extraBed: { label: "เตียงเสริม", price: Number(row.extra_bed_price || 0) }
+      })
+    },
     bankName: { label: "ธนาคาร", value: row.bank_name || "" },
     bankAccountName: { label: "ชื่อบัญชี", value: row.bank_account_name || "" },
     bankAccountNumber: { label: "เลขบัญชี", value: row.bank_account_number || "" },
@@ -125,6 +192,7 @@ function settingObjectFromRow(row = {}) {
     gpsUrl: { label: "ลิงก์ GPS", value: row.gps_url || "" },
     qrCodeUrl: { label: "QR-code ชำระเงิน", value: row.qr_code_url || "" },
     promptPayId: { label: "เลขพร้อมเพย์สำหรับ QR", value: row.promptpay_id || "" },
+    bookingFee: { label: "ค่าจอง", value: Number(row.booking_fee ?? DEFAULT_SETTINGS.bookingFee?.value ?? (typeof BOOKING_FEE !== "undefined" ? BOOKING_FEE : 20)) },
     paymentNote: { label: "หมายเหตุชำระเงิน", value: row.payment_note || "" },
     propertyPolicy: { label: "นโยบายที่พัก", value: row.property_policy || "" }
   });
@@ -137,7 +205,8 @@ function settingsRowFromObject(settings = {}, homestayId) {
     logo_url: settings.logoUrl?.value || DEFAULT_SETTINGS.logoUrl.value,
     mookata_price: Number(settings.mookata?.price || 0),
     extra_bed_price: Number(settings.extraBed?.price || 0),
-    booking_fee: Number(typeof BOOKING_FEE !== "undefined" ? BOOKING_FEE : 20),
+    extra_addons: normalizeAddonItems(settings.addons?.items, settings),
+    booking_fee: Number(settings.bookingFee?.value ?? settings.bookingFee ?? (typeof BOOKING_FEE !== "undefined" ? BOOKING_FEE : 20)),
     bank_name: settings.bankName?.value || "",
     bank_account_name: settings.bankAccountName?.value || "",
     bank_account_number: settings.bankAccountNumber?.value || "",
@@ -197,6 +266,7 @@ function bookingObjectFromRow(row = {}) {
     mookataPrice: Number(row.mookata_price || 0),
     extraBedQty: Number(row.extra_bed_qty || 0),
     extraBedPrice: Number(row.extra_bed_price || 0),
+    addonItems: normalizeBookingAddonItems(row.addon_items),
     roomTotal: Number(row.room_total || 0),
     addonTotal: Number(row.addon_total || 0),
     bookingFee: Number(row.booking_fee || 0),
@@ -239,6 +309,7 @@ function bookingRowFromObject(booking = {}, homestayId) {
     mookata_price: Number(booking.mookataPrice || 0),
     extra_bed_qty: Number(booking.extraBedQty || 0),
     extra_bed_price: Number(booking.extraBedPrice || 0),
+    addon_items: normalizeBookingAddonItems(booking.addonItems),
     room_total: Number(booking.roomTotal || 0),
     addon_total: Number(booking.addonTotal || 0),
     booking_fee: Number(booking.bookingFee || 0),
@@ -264,9 +335,104 @@ function bookingRowFromObject(booking = {}, homestayId) {
 }
 
 function syncPlanFromRow(row = {}) {
-  if (!row || typeof setPlan !== "function" || typeof setCredits !== "function") return;
+  if (typeof setPlan !== "function" || typeof setCredits !== "function") return;
+  if (!row) {
+    setPlan("credit", "");
+    setCredits(0);
+    return;
+  }
   setPlan(row.plan_type || "credit", row.plan_started_at || "");
   setCredits(Number(row.credits || 0));
+}
+
+function buildPlanPayload(plan = {}, homestayId) {
+  const planType = String(plan.planType || plan.plan_type || "credit");
+  const credits = Math.max(0, Number(plan.credits || 0));
+  const startedAt = plan.planStartedAt || plan.plan_started_at || null;
+  const expiresAt = plan.planExpiresAt || plan.plan_expires_at || null;
+
+  return {
+    homestay_id: homestayId,
+    plan_type: planType,
+    credits,
+    plan_started_at: startedAt || null,
+    plan_expires_at: expiresAt || null,
+    status: plan.status || "active"
+  };
+}
+
+async function saveSupabasePlan(plan = {}, homestayId, options = {}) {
+  const planPayload = buildPlanPayload(plan, homestayId);
+  const save = payload => supabaseRequest("homestay_plans?on_conflict=homestay_id", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+    body: JSON.stringify(payload)
+  });
+
+  let rows;
+  try {
+    rows = await save(planPayload);
+  } catch (error) {
+    const message = String(error?.message || "");
+    const canRetryMinimal = /plan_started_at|plan_expires_at|schema cache|column/i.test(message);
+    if (!canRetryMinimal) throw error;
+
+    const minimalPayload = {
+      homestay_id: homestayId,
+      plan_type: planPayload.plan_type,
+      credits: planPayload.credits,
+      status: planPayload.status
+    };
+    rows = await save(minimalPayload);
+  }
+
+  const savedPlan = rows?.[0] || planPayload;
+  if (options.sync !== false) syncPlanFromRow(savedPlan);
+  return savedPlan;
+}
+
+async function deductBookingCredits(homestayId, bookingId) {
+  if (typeof CREDIT_PER_BOOKING === "undefined") return null;
+
+  const planRows = await supabaseRequest(`homestay_plans?homestay_id=eq.${homestayId}&select=*`);
+  const plan = planRows?.[0] || null;
+  const planType = plan?.plan_type || "credit";
+
+  if (planType !== "credit") {
+    syncPlanFromRow(plan);
+    return plan;
+  }
+
+  const currentCredits = Number(
+    plan?.credits ?? (typeof getCredits === "function" ? getCredits() : 0)
+  );
+  const nextCredits = Math.max(0, currentCredits - Number(CREDIT_PER_BOOKING || 0));
+  const planPayload = {
+    homestay_id: homestayId,
+    credits: nextCredits,
+    plan_type: "credit",
+    status: "active"
+  };
+
+  const updated = await supabaseRequest("homestay_plans?on_conflict=homestay_id", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+    body: JSON.stringify(planPayload)
+  });
+
+  await supabaseRequest("credit_ledger", {
+    method: "POST",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({
+      homestay_id: homestayId,
+      booking_id: bookingId || null,
+      amount: -Number(CREDIT_PER_BOOKING || 0),
+      reason: "booking_created"
+    })
+  });
+
+  syncPlanFromRow(updated?.[0] || planPayload);
+  return updated?.[0] || planPayload;
 }
 
 async function getSupabaseHomestay() {
@@ -277,12 +443,133 @@ async function getSupabaseHomestay() {
   return homestay;
 }
 
+async function createSupabaseHomestay(payload = {}) {
+  const name = String(payload.name || "").trim();
+  if (!name) throw new Error("Please enter a homestay name.");
+
+  const slug = normalizeHomestaySlug(payload.slug || name);
+  const warnings = [];
+  const logoUrl = payload.logoUrl || DEFAULT_SETTINGS.logoUrl?.value || "";
+  const fullHomestayRow = {
+    slug,
+    name,
+    logo_url: logoUrl,
+    page_url: payload.pageUrl || "",
+    gps_url: payload.gpsUrl || "",
+    status: "active"
+  };
+  const minimalHomestayRow = { slug, name, status: "active" };
+  const insertHomestay = row => supabaseRequest("homestays", {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify(row)
+  });
+
+  let homestayRows;
+  try {
+    homestayRows = await insertHomestay(fullHomestayRow);
+  } catch (error) {
+    if (isDuplicateRowError(error)) {
+      throw new Error(`Slug "${slug}" is already used. Please choose another slug.`);
+    }
+    if (!isSchemaColumnError(error)) throw error;
+
+    warnings.push("Saved homestay without optional page/logo/GPS fields. Run supabase_admin_create_homestay_migration.sql to add those columns.");
+    homestayRows = await insertHomestay(minimalHomestayRow);
+  }
+
+  let homestay = homestayRows?.[0];
+  if (!homestay?.id) {
+    const foundRows = await supabaseRequest(`homestays?slug=eq.${encodeURIComponent(slug)}&select=*`);
+    homestay = foundRows?.[0];
+  }
+  if (!homestay?.id) throw new Error("Homestay was not created. Check the homestays insert/select policy.");
+
+  const settings = normalizeSettings({
+    ...DEFAULT_SETTINGS,
+    siteName: { label: "Site name", value: name },
+    logoUrl: { label: "Logo", value: logoUrl },
+    pageUrl: { label: "Page URL", value: payload.pageUrl || "" },
+    gpsUrl: { label: "GPS URL", value: payload.gpsUrl || "" }
+  });
+  const settingsRow = settingsRowFromObject(settings, homestay.id);
+
+  try {
+    await supabaseRequest("homestay_settings?on_conflict=homestay_id", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify(settingsRow)
+    });
+  } catch (error) {
+    if (isSchemaColumnError(error)) {
+      try {
+        await supabaseRequest("homestay_settings?on_conflict=homestay_id", {
+          method: "POST",
+          headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+          body: JSON.stringify({
+            homestay_id: homestay.id,
+            site_name: name
+          })
+        });
+        warnings.push("Saved only basic settings because homestay_settings is missing newer columns.");
+      } catch (retryError) {
+        warnings.push(`Settings were not created: ${retryError.message || error.message || "unknown error"}`);
+      }
+    } else {
+      warnings.push(`Settings were not created: ${error.message || "unknown error"}`);
+    }
+  }
+
+  let plan = null;
+  try {
+    plan = await saveSupabasePlan({
+      planType: "credit",
+      credits: 0,
+      status: "active"
+    }, homestay.id);
+  } catch (error) {
+    warnings.push(`Credit plan was not created: ${error.message || "unknown error"}`);
+  }
+
+  return {
+    ...homestay,
+    name: homestay.name || name,
+    slug: homestay.slug || slug,
+    settings: settingObjectFromRow(settingsRow),
+    plan,
+    warnings,
+    ownerUrl: `owner.html?homestay=${encodeURIComponent(slug)}`,
+    customerUrl: `customer.html?homestay=${encodeURIComponent(slug)}`
+  };
+}
+
+async function listSupabaseAdminHomestays() {
+  const [homestayRows, planRows] = await Promise.all([
+    supabaseRequest("homestays?select=*&order=created_at.desc"),
+    supabaseRequest("homestay_plans?select=*")
+  ]);
+  const planByHomestay = new Map((planRows || []).map(plan => [plan.homestay_id, plan]));
+
+  return (homestayRows || []).map(homestay => {
+    const plan = planByHomestay.get(homestay.id) || null;
+    const slug = homestay.slug || "";
+    return {
+      ...homestay,
+      plan,
+      credits: Number(plan?.credits || 0),
+      planType: plan?.plan_type || "credit",
+      ownerUrl: `owner.html?homestay=${encodeURIComponent(slug)}`,
+      customerUrl: `customer.html?homestay=${encodeURIComponent(slug)}`
+    };
+  });
+}
+
 function getSiteName(settings = {}) {
-  return String(settings.siteName?.value || DEFAULT_SETTINGS.siteName?.value || "Wiwahrin").trim() || "Wiwahrin";
+  return String(settings.siteName?.value || DEFAULT_SETTINGS.siteName?.value || "ชื่อที่พัก").trim() || "ชื่อที่พัก";
 }
 
 function getLogoUrl(settings = {}) {
-  return String(settings.logoUrl?.value || DEFAULT_SETTINGS.logoUrl?.value || "LOGO.jpg").trim() || "LOGO.jpg";
+  return String(settings.logoUrl?.value || DEFAULT_SETTINGS.logoUrl?.value || "default-home-logo.svg").trim() || "default-home-logo.svg";
 }
 
 function applyBrandAssets(settings = {}, pageSuffix = "") {
@@ -303,7 +590,9 @@ function applyBrandAssets(settings = {}, pageSuffix = "") {
   document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]').forEach(link => {
     link.href = logoUrl;
     if (link.rel !== "apple-touch-icon") {
-      link.type = logoUrl.startsWith("data:image/") ? logoUrl.slice(5, logoUrl.indexOf(";")) : "image/jpeg";
+      link.type = logoUrl.startsWith("data:image/")
+        ? logoUrl.slice(5, logoUrl.indexOf(";"))
+        : (logoUrl.toLowerCase().endsWith(".svg") ? "image/svg+xml" : "image/jpeg");
     }
   });
 }
@@ -631,6 +920,34 @@ async function apiRequest(payload) {
 
 async function supabaseApiRequest(payload) {
   const action = payload.action || "list";
+
+  if (action === "createHomestay") {
+    const homestay = await createSupabaseHomestay(payload.homestay || {});
+    return { ok: true, data: homestay, mode: "supabase" };
+  }
+
+  if (action === "adminListHomestays") {
+    const homestays = await listSupabaseAdminHomestays();
+    return { ok: true, data: homestays, count: homestays.length, mode: "supabase" };
+  }
+
+  if (action === "adminUpdateHomestayPlan") {
+    const homestayId = String(payload.homestayId || "").trim();
+    if (!homestayId) throw new Error("Missing homestay id.");
+    const plan = await saveSupabasePlan(payload.plan || {}, homestayId, { sync: false });
+    return { ok: true, data: plan, mode: "supabase" };
+  }
+
+  if (action === "adminDeleteHomestay") {
+    const homestayId = String(payload.homestayId || "").trim();
+    if (!homestayId) throw new Error("Missing homestay id.");
+    await supabaseRequest(`homestays?id=eq.${encodeURIComponent(homestayId)}`, {
+      method: "DELETE",
+      headers: { Prefer: "return=minimal" }
+    });
+    return { ok: true, mode: "supabase" };
+  }
+
   const homestay = await getSupabaseHomestay();
   const homestayId = homestay.id;
 
@@ -707,6 +1024,22 @@ async function supabaseApiRequest(payload) {
     return { ok: true, data: settingObjectFromRow(rows?.[0] || settingsRow), mode: "supabase" };
   }
 
+  if (action === "updatePlan") {
+    const plan = await saveSupabasePlan(payload.plan || {}, homestayId);
+    return { ok: true, data: plan, mode: "supabase" };
+  }
+
+  if (action === "resetPlan") {
+    const plan = await saveSupabasePlan({
+      planType: "credit",
+      credits: 0,
+      planStartedAt: null,
+      planExpiresAt: null,
+      status: "active"
+    }, homestayId);
+    return { ok: true, data: plan, mode: "supabase" };
+  }
+
   if (action === "createRoom") {
     const roomId = crypto.randomUUID ? crypto.randomUUID() : "";
     const uploadedImages = await uploadRoomImagesToStorage(payload.room || {}, homestay.slug, roomId || Date.now());
@@ -754,28 +1087,7 @@ async function supabaseApiRequest(payload) {
       body: JSON.stringify(row)
     });
 
-    if (typeof CREDIT_PER_BOOKING !== "undefined") {
-      const planRows = await supabaseRequest(`homestay_plans?homestay_id=eq.${homestayId}&select=*`);
-      const plan = planRows?.[0];
-      if (!plan || !plan.plan_type || plan.plan_type === "credit") {
-        const nextCredits = Math.max(0, Number(plan?.credits || 0) - Number(CREDIT_PER_BOOKING || 0));
-        await supabaseRequest(`homestay_plans?homestay_id=eq.${homestayId}`, {
-          method: "PATCH",
-          headers: { Prefer: "return=representation" },
-          body: JSON.stringify({ credits: nextCredits, plan_type: "credit" })
-        }).then(updated => syncPlanFromRow(updated?.[0])).catch(() => {});
-        await supabaseRequest("credit_ledger", {
-          method: "POST",
-          headers: { Prefer: "return=minimal" },
-          body: JSON.stringify({
-            homestay_id: homestayId,
-            booking_id: rows?.[0]?.id || null,
-            amount: -Number(CREDIT_PER_BOOKING || 0),
-            reason: "booking_created"
-          })
-        }).catch(() => {});
-      }
-    }
+    await deductBookingCredits(homestayId, rows?.[0]?.id || null);
 
     if (rows?.[0]?.id && slipUrl && String(row.slip_verify_status || "not_checked") === "not_checked") {
       queueSlipVerification(rows[0].id, homestay.slug);
@@ -881,6 +1193,69 @@ async function localApiRequest(payload) {
     settings = { ...settings, ...incomingSettings };
     localSaveSettings(settings);
     return { ok: true, data: settings, mode: "local" };
+  }
+
+  if (payload.action === "createHomestay") {
+    const homestay = payload.homestay || {};
+    const name = String(homestay.name || "").trim();
+    if (!name) return { ok: false, message: "กรุณากรอกชื่อโฮมสเตย์", mode: "local" };
+    const slug = normalizeHomestaySlug(homestay.slug || name);
+    return {
+      ok: true,
+      data: {
+        id: slug,
+        slug,
+        name,
+        ownerUrl: `owner.html?homestay=${encodeURIComponent(slug)}`,
+        customerUrl: `customer.html?homestay=${encodeURIComponent(slug)}`
+      },
+      mode: "local"
+    };
+  }
+
+  if (payload.action === "adminListHomestays") {
+    const slug = typeof getCurrentHomestaySlug === "function" ? getCurrentHomestaySlug() : "homestay";
+    const planType = typeof getPlanType === "function" ? getPlanType() : "credit";
+    const credits = typeof getCredits === "function" ? getCredits() : 0;
+    return {
+      ok: true,
+      data: [{
+        id: slug,
+        slug,
+        name: settings.siteName?.value || DEFAULT_SETTINGS.siteName?.value || slug,
+        credits,
+        planType,
+        plan: { plan_type: planType, credits },
+        ownerUrl: `owner.html?homestay=${encodeURIComponent(slug)}`,
+        customerUrl: `customer.html?homestay=${encodeURIComponent(slug)}`
+      }],
+      count: 1,
+      mode: "local"
+    };
+  }
+
+  if (payload.action === "adminUpdateHomestayPlan") {
+    const plan = payload.plan || {};
+    setPlan(plan.planType || plan.plan_type || "credit", plan.planStartedAt || plan.plan_started_at || "");
+    setCredits(Number(plan.credits || 0));
+    return { ok: true, data: plan, mode: "local" };
+  }
+
+  if (payload.action === "adminDeleteHomestay") {
+    return { ok: true, mode: "local" };
+  }
+
+  if (payload.action === "updatePlan") {
+    const plan = payload.plan || {};
+    setPlan(plan.planType || plan.plan_type || "credit", plan.planStartedAt || plan.plan_started_at || "");
+    setCredits(Number(plan.credits || 0));
+    return { ok: true, data: plan, mode: "local" };
+  }
+
+  if (payload.action === "resetPlan") {
+    setPlan("credit", "");
+    setCredits(0);
+    return { ok: true, data: { plan_type: "credit", credits: 0, status: "active" }, mode: "local" };
   }
 
   if (payload.action === "createRoom") {
@@ -992,10 +1367,25 @@ function dateDiffNights(start, end) {
 }
 
 function normalizeSettings(settings) {
-  return {
+  const merged = {
     ...clone(DEFAULT_SETTINGS),
     ...(settings || {})
   };
+  merged.addons = {
+    label: merged.addons?.label || "บริการเสริม",
+    items: normalizeAddonItems(merged.addons?.items, merged)
+  };
+  const mookata = merged.addons.items.find(item => item.id === "mookata");
+  const extraBed = merged.addons.items.find(item => item.id === "extra_bed");
+  merged.mookata = { ...(merged.mookata || {}), price: Number(mookata?.price || 0) };
+  merged.extraBed = { ...(merged.extraBed || {}), price: Number(extraBed?.price || 0) };
+  if (mookata) merged.mookata.label = mookata.name;
+  if (extraBed) merged.extraBed.label = extraBed.name;
+  merged.bookingFee = {
+    label: merged.bookingFee?.label || "ค่าจอง",
+    value: Math.max(0, Number(merged.bookingFee?.value ?? merged.bookingFee ?? (typeof BOOKING_FEE !== "undefined" ? BOOKING_FEE : 20)))
+  };
+  return merged;
 }
 
 function normalizeRooms(rooms) {

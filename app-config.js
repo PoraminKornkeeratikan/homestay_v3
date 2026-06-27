@@ -10,46 +10,27 @@ const SUPABASE_URL = "https://hjhkbfxizvcqtisgcmwj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhqaGtiZnhpenZjcXRpc2djbXdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyOTA0NzEsImV4cCI6MjA5Nzg2NjQ3MX0.ylI0DTOPRUTlf404H094c--_AIArNXOW0inp6SobzSc";
 const DEFAULT_HOMESTAY_SLUG = "Wiwahrin";
 
-const ADMIN_PASSWORD = "1234";
+const OWNER_PASSWORD = "1234";
 
-const DEFAULT_ROOMS = [
-  {
-    id: "standard",
-    name: "ห้อง Standard",
-    price: 690,
-    detail: "ห้องเรียบง่าย สะอาด เหมาะสำหรับ 1-2 คน",
-    image: "https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=900&q=70",
-    active: true
-  },
-  {
-    id: "deluxe",
-    name: "ห้อง Deluxe",
-    price: 990,
-    detail: "พื้นที่กว้างขึ้น มีมุมนั่งเล่น บรรยากาศอบอุ่น",
-    image: "https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=900&q=70",
-    active: true
-  },
-  {
-    id: "family",
-    name: "ห้อง Family",
-    price: 1490,
-    detail: "เหมาะสำหรับครอบครัว พักได้หลายคน สะดวกสบาย",
-    image: "https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=900&q=70",
-    active: true
-  }
-];
+const DEFAULT_ROOMS = [];
 
 const DEFAULT_SETTINGS = {
-  siteName: { label: "ชื่อเว็บไซต์", value: "Wiwahrin" },
-  logoUrl: { label: "โลโก้", value: "LOGO.jpg" },
-  mookata: { label: "หมูกระทะ", price: 450 },
-  extraBed: { label: "เตียงเสริม", price: 300 },
-  bankName: { label: "ธนาคาร", value: "ธ.กสิกรไทย" },
-  bankAccountName: { label: "ชื่อบัญชี", value: "GreenStay Homestay" },
-  bankAccountNumber: { label: "เลขบัญชี", value: "123-4-56789-0" },
+  siteName: { label: "ชื่อเว็บไซต์", value: "" },
+  logoUrl: { label: "โลโก้", value: "" },
+  mookata: { label: "หมูกระทะ", price: 0 },
+  extraBed: { label: "เตียงเสริม", price: 0 },
+  addons: {
+    label: "บริการเสริม",
+    items: []
+  },
+  bankName: { label: "ธนาคาร", value: "" },
+  bankAccountName: { label: "ชื่อบัญชี", value: "" },
+  bankAccountNumber: { label: "เลขบัญชี", value: "" },
+  promptPayId: { label: "เลขพร้อมเพย์สำหรับ QR", value: "" },
   pageUrl: { label: "ลิงก์เพจ", value: "" },
   gpsUrl: { label: "ลิงก์ GPS", value: "" },
   qrCodeUrl: { label: "QR-code ชำระเงิน", value: "" },
+  bookingFee: { label: "ค่าจอง", value: 40 },
   paymentNote: { label: "หมายเหตุชำระเงิน", value: "โอนแล้วส่งสลิปให้แอดมินเพื่อยืนยันการจอง" },
   propertyPolicy: {
     label: "นโยบายที่พัก",
@@ -61,7 +42,7 @@ const BOOKING_FEE = 40;
 
 // ======= CREDIT SYSTEM =======
 const CREDIT_PER_BOOKING = 40;   // เครดิตที่ใช้ต่อการจอง 1 ครั้ง
-const COMPANY_PASSWORD = "1234"; // รหัสผ่านหน้า company
+const ADMIN_PASSWORD = "1234"; // รหัสผ่านหน้า admin
 
 const TOPUP_PAYMENT_SETTINGS = {
   bankName: { label: "ช่องทางรับเงิน", value: "พร้อมเพย์" },
@@ -86,6 +67,10 @@ function getCredits() {
 function setCredits(n) {
   localStorage.setItem("hs_credits", Math.max(0, n));
 }
+function resetLocalPlanState() {
+  setCredits(0);
+  setPlan("credit", "");
+}
 function getPlanType() {
   return localStorage.getItem("hs_plan_type") || ""; // "credit"|"yearly"|"infinity"
 }
@@ -94,7 +79,11 @@ function getPlanStart() {
 }
 function setPlan(type, startDate) {
   localStorage.setItem("hs_plan_type", type);
-  if (startDate) localStorage.setItem("hs_plan_start", startDate);
+  if (startDate) {
+    localStorage.setItem("hs_plan_start", startDate);
+  } else {
+    localStorage.removeItem("hs_plan_start");
+  }
 }
 function isSystemActive() {
   const type = getPlanType();

@@ -65,10 +65,11 @@ create table if not exists public.homestay_members (
 -- ===== Settings =====
 create table if not exists public.homestay_settings (
   homestay_id uuid primary key references public.homestays(id) on delete cascade,
-  site_name text not null default 'Wiwahrin',
+  site_name text not null default '',
   logo_url text,
   mookata_price numeric(12,2) not null default 0,
   extra_bed_price numeric(12,2) not null default 0,
+  extra_addons jsonb not null default '[]'::jsonb,
   booking_fee numeric(12,2) not null default 20,
   bank_name text,
   bank_account_name text,
@@ -146,6 +147,7 @@ create table if not exists public.bookings (
   mookata_price numeric(12,2) not null default 0,
   extra_bed_qty integer not null default 0,
   extra_bed_price numeric(12,2) not null default 0,
+  addon_items jsonb not null default '[]'::jsonb,
 
   room_total numeric(12,2) not null default 0,
   addon_total numeric(12,2) not null default 0,
@@ -260,7 +262,7 @@ group by h.id;
 
 -- ===== Initial sample tenant =====
 insert into public.homestays (slug, name, logo_url, status)
-values ('Wiwahrin', 'Wiwahrin', 'LOGO.jpg', 'active')
+values ('Wiwahrin', 'ชื่อที่พัก', '', 'active')
 on conflict (slug) do nothing;
 
 insert into public.homestay_settings (
@@ -279,14 +281,14 @@ insert into public.homestay_settings (
 )
 select
   h.id,
-  'Wiwahrin',
-  'LOGO.jpg',
-  450,
-  300,
+  '',
+  '',
+  0,
+  0,
   20,
-  'ธ.กสิกรไทย',
-  'GreenStay Homestay',
-  '123-4-56789-0',
+  '',
+  '',
+  '',
   '',
   'โอนแล้วส่งสลิปให้แอดมินเพื่อยืนยันการจอง',
   '1. เช็กอินได้ตั้งแต่ 14:00 น.
@@ -299,25 +301,10 @@ where h.slug = 'Wiwahrin'
 on conflict (homestay_id) do nothing;
 
 insert into public.homestay_plans (homestay_id, plan_type, credits, status)
-select h.id, 'credit', 1000, 'active'
+select h.id, 'credit', 0, 'active'
 from public.homestays h
 where h.slug = 'Wiwahrin'
 on conflict (homestay_id) do nothing;
-
-insert into public.rooms (homestay_id, name, price, detail, image_url, gallery_images, active, sort_order)
-select h.id, room.name, room.price, room.detail, room.image_url, jsonb_build_array(room.image_url), true, room.sort_order
-from public.homestays h
-cross join (
-  values
-    ('ห้อง Standard', 690, 'ห้องเรียบง่าย สะอาด เหมาะสำหรับ 1-2 คน', 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=900&q=70', 1),
-    ('ห้อง Deluxe', 990, 'พื้นที่กว้างขึ้น มีมุมนั่งเล่น บรรยากาศอบอุ่น', 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=900&q=70', 2),
-    ('ห้อง Family', 1490, 'เหมาะสำหรับครอบครัว พักได้หลายคน สะดวกสบาย', 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=900&q=70', 3)
-) as room(name, price, detail, image_url, sort_order)
-where h.slug = 'Wiwahrin'
-and not exists (
-  select 1 from public.rooms r
-  where r.homestay_id = h.id
-);
 
 -- ===== RLS preparation =====
 -- For the next implementation step we should enable RLS and policies.

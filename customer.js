@@ -1,7 +1,7 @@
 let settings = normalizeSettings(DEFAULT_SETTINGS);
 let rooms = normalizeRooms(DEFAULT_ROOMS);
 let bookings = [];
-let mookataQty = 1;
+let selectedAddonQty = {};
 let selectedRoomId = "";
 let calendarDate = new Date();
 let pendingBooking = null;
@@ -24,14 +24,8 @@ const nextMonthBtn = document.getElementById("nextMonthBtn");
 const calendarMonthText = document.getElementById("calendarMonthText");
 const calendarGrid = document.getElementById("calendarGrid");
 
-const mookataCheckbox = document.getElementById("mookataCheckbox");
-const mookataMinusBtn = document.getElementById("mookataMinusBtn");
-const mookataPlusBtn = document.getElementById("mookataPlusBtn");
-const mookataQtyText = document.getElementById("mookataQtyText");
-const extraBedCheckbox = document.getElementById("extraBedCheckbox");
+const addonGrid = document.getElementById("addonGrid");
 
-const mookataPriceText = document.getElementById("mookataPriceText");
-const extraBedPriceText = document.getElementById("extraBedPriceText");
 const roomTotalText = document.getElementById("roomTotalText");
 const addonTotalText = document.getElementById("addonTotalText");
 const grandTotalText = document.getElementById("grandTotalText");
@@ -558,10 +552,96 @@ function selectCalendarDate(dateKey) {
   updateSummary();
 }
 
+function getActiveAddonSettings() {
+  return normalizeAddonItems(settings.addons?.items, settings).filter(item => item.active !== false);
+}
+
+function renderAddonChoices() {
+  if (!addonGrid) return;
+  const items = getActiveAddonSettings();
+
+  if (!items.length) {
+    addonGrid.innerHTML = `<div class="empty full">ยังไม่มีบริการเสริม</div>`;
+    return;
+  }
+
+  addonGrid.innerHTML = items.map(item => {
+    const qty = Math.max(1, Number(selectedAddonQty[item.id] || 1));
+    return `
+      <label class="addon-card" for="addon_${escapeHtml(item.id)}">
+        <div class="addon-left">
+          <input type="checkbox" id="addon_${escapeHtml(item.id)}" data-addon-check="${escapeHtml(item.id)}" />
+          <div>
+            <strong>${escapeHtml(item.name)}</strong>
+            <span>${formatMoney(item.price)} / ${escapeHtml(item.unit || "รายการ")}</span>
+          </div>
+        </div>
+        <div class="qty-control" aria-label="จำนวน ${escapeHtml(item.name)}">
+          <button type="button" data-addon-minus="${escapeHtml(item.id)}">−</button>
+          <b data-addon-qty="${escapeHtml(item.id)}">${qty}</b>
+          <button type="button" data-addon-plus="${escapeHtml(item.id)}">+</button>
+        </div>
+      </label>
+    `;
+  }).join("");
+}
+
+function getSelectedAddonItems() {
+  return getActiveAddonSettings()
+    .map(item => {
+      const checked = addonGrid?.querySelector(`[data-addon-check="${CSS.escape(item.id)}"]`)?.checked;
+      const qty = checked ? Math.max(1, Number(selectedAddonQty[item.id] || 1)) : 0;
+      return {
+        id: item.id,
+        name: item.name,
+        unit: item.unit || "รายการ",
+        qty,
+        price: Number(item.price || 0),
+        total: qty * Number(item.price || 0)
+      };
+    })
+    .filter(item => item.qty > 0);
+}
+
+function getBookingAddonItems(booking = {}) {
+  const items = normalizeBookingAddonItems(booking.addonItems);
+  if (items.length) return items;
+
+  const fallback = [];
+  if (Number(booking.mookataQty || 0) > 0) {
+    fallback.push({
+      id: "mookata",
+      name: "หมูกระทะ",
+      unit: "ชุด",
+      qty: Number(booking.mookataQty || 0),
+      price: Number(booking.mookataPrice || 0),
+      total: Number(booking.mookataQty || 0) * Number(booking.mookataPrice || 0)
+    });
+  }
+  if (Number(booking.extraBedQty || 0) > 0) {
+    fallback.push({
+      id: "extra_bed",
+      name: "เตียงเสริม",
+      unit: "เตียง",
+      qty: Number(booking.extraBedQty || 0),
+      price: Number(booking.extraBedPrice || 0),
+      total: Number(booking.extraBedQty || 0) * Number(booking.extraBedPrice || 0)
+    });
+  }
+  return fallback;
+}
+
+function formatAddonItems(items = []) {
+  const lines = normalizeBookingAddonItems(items).map(item => {
+    const qtyText = Number(item.qty || 0) > 1 ? ` ${item.qty} ${item.unit || "รายการ"}` : "";
+    return `${item.name}${qtyText} ${formatMoney(item.total || item.qty * item.price)}`;
+  });
+  return lines.length ? lines.join(", ") : "ไม่มี";
+}
+
 function renderSettings() {
   applyBrandAssets(settings);
-  mookataPriceText.textContent = `${formatMoney(settings.mookata.price)} / ชุด`;
-  extraBedPriceText.textContent = `${formatMoney(settings.extraBed.price)} / 1 เตียง`;
+  renderAddonChoices();
 
   bankNameText.textContent = settings.bankName.value || "-";
   bankAccountNameText.textContent = settings.bankAccountName.value || "-";
@@ -728,14 +808,15 @@ function getSummary() {
   const nights = dateDiffNights(checkIn.value, checkOut.value);
   const roomTotal = Number(room.price || 0) * nights;
 
-  const selectedMookataQty = mookataCheckbox.checked ? mookataQty : 0;
-  const mookataTotal = selectedMookataQty * Number(settings.mookata.price || 0);
-
-  const extraBedQty = extraBedCheckbox.checked ? 1 : 0;
-  const extraBedTotal = extraBedQty * Number(settings.extraBed.price || 0);
-
-  const addonTotal = mookataTotal + extraBedTotal;
-  const bookingFee = Number(typeof BOOKING_FEE !== "undefined" ? BOOKING_FEE : 20);
+  const addonItems = getSelectedAddonItems();
+  const selectedMookata = addonItems.find(item => item.id === "mookata");
+  const selectedExtraBed = addonItems.find(item => item.id === "extra_bed");
+  const selectedMookataQty = Number(selectedMookata?.qty || 0);
+  const mookataTotal = Number(selectedMookata?.total || 0);
+  const extraBedQty = Number(selectedExtraBed?.qty || 0);
+  const extraBedTotal = Number(selectedExtraBed?.total || 0);
+  const addonTotal = addonItems.reduce((sum, item) => sum + Number(item.total || 0), 0);
+  const bookingFee = Math.max(0, Number(settings.bookingFee?.value ?? settings.bookingFee ?? (typeof BOOKING_FEE !== "undefined" ? BOOKING_FEE : 20)));
   const grandTotal = roomTotal + addonTotal + bookingFee;
 
   return {
@@ -746,6 +827,7 @@ function getSummary() {
     mookataTotal,
     extraBedQty,
     extraBedTotal,
+    addonItems,
     addonTotal,
     bookingFee,
     grandTotal
@@ -761,9 +843,10 @@ function updateSummary() {
   grandTotalText.textContent = formatMoney(summary.grandTotal);
   setupPaymentQr(summary.grandTotal);
 
-  mookataQtyText.textContent = mookataQty;
-  mookataMinusBtn.disabled = !mookataCheckbox.checked || mookataQty <= 1;
-  mookataPlusBtn.disabled = !mookataCheckbox.checked;
+  summary.addonItems.forEach(item => {
+    const qtyText = addonGrid?.querySelector(`[data-addon-qty="${CSS.escape(item.id)}"]`);
+    if (qtyText) qtyText.textContent = item.qty;
+  });
   updateDateSummary();
 }
 
@@ -834,9 +917,10 @@ async function buildBookingObject() {
     nights: summary.nights,
     guestCount: document.getElementById("guestCount").value,
     mookataQty: summary.selectedMookataQty,
-    mookataPrice: Number(settings.mookata.price || 0),
+    mookataPrice: Number(summary.addonItems.find(item => item.id === "mookata")?.price || settings.mookata.price || 0),
     extraBedQty: summary.extraBedQty,
-    extraBedPrice: Number(settings.extraBed.price || 0),
+    extraBedPrice: Number(summary.addonItems.find(item => item.id === "extra_bed")?.price || settings.extraBed.price || 0),
+    addonItems: summary.addonItems,
     addonTotal: summary.addonTotal,
     roomTotal: summary.roomTotal,
     bookingFee: summary.bookingFee,
@@ -858,9 +942,7 @@ async function buildBookingObject() {
 function renderTicket(booking) {
   ticketBookingCode.textContent = booking.bookingCode;
 
-  const addons = [];
-  if (Number(booking.mookataQty) > 0) addons.push(`หมูกระทะ ${booking.mookataQty} ชุด`);
-  if (Number(booking.extraBedQty) > 0) addons.push(`เตียงเสริม ${booking.extraBedQty} เตียง`);
+  const addonText = formatAddonItems(getBookingAddonItems(booking));
 
   const rows = [
     ["ชื่อผู้จอง", booking.name],
@@ -871,7 +953,7 @@ function renderTicket(booking) {
     ["เช็กเอาต์", formatThaiDate(booking.checkOut)],
     ["จำนวนคืน", `${booking.nights} คืน`],
     ["ผู้เข้าพัก", `${booking.guestCount} คน`],
-    ["บริการเสริม", addons.length ? addons.join(", ") : "ไม่มี"],
+    ["บริการเสริม", addonText],
     ["ค่าห้อง", formatMoney(booking.roomTotal)],
     ["บริการเสริม", formatMoney(booking.addonTotal)],
     ["ค่าจอง", formatMoney(booking.bookingFee)],
@@ -922,7 +1004,7 @@ function downloadTicketImage(booking) {
 
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 42px sans-serif";
-  ctx.fillText("GreenStay Homestay", 54, 70);
+  ctx.fillText(getSiteName(settings), 54, 70);
   ctx.font = "24px sans-serif";
   ctx.fillText("หลักฐานการจองสำหรับยื่นตอนเข้าพัก", 54, 112);
 
@@ -1050,7 +1132,7 @@ async function confirmSendBooking() {
     });
 
     // หักเครดิต
-    if (getPlanType() === "credit" || getPlanType() === "") {
+    if (result.mode !== "supabase" && (getPlanType() === "credit" || getPlanType() === "")) {
       setCredits(getCredits() - CREDIT_PER_BOOKING);
     }
 
@@ -1060,12 +1142,13 @@ async function confirmSendBooking() {
     bookingForm.reset();
     roomType.value = "";
     selectedRoomId = "";
-    mookataQty = 1;
+    selectedAddonQty = {};
     setMinDates();
     resetSelectedDates();
     updateSlipPreview();
     bookingPanel.classList.add("hidden");
     renderRooms();
+    renderAddonChoices();
     updateSummary();
     pendingBooking = null;
   } catch (error) {
@@ -1085,9 +1168,7 @@ function renderHistoryResult(booking) {
     return;
   }
 
-  const addons = [];
-  if (Number(booking.mookataQty || 0) > 0) addons.push(`หมูกระทะ ${booking.mookataQty} ชุด`);
-  if (Number(booking.extraBedQty || 0) > 0) addons.push(`เตียงเสริม ${booking.extraBedQty} เตียง`);
+  const addonText = formatAddonItems(getBookingAddonItems(booking));
 
   historyResult.classList.remove("hidden");
   historyResult.innerHTML = `
@@ -1110,7 +1191,7 @@ function renderHistoryResult(booking) {
       </div>
       <div>
         <span>บริการเสริม</span>
-        <strong>${escapeHtml(addons.length ? addons.join(", ") : "ไม่มี")}</strong>
+        <strong>${escapeHtml(addonText)}</strong>
       </div>
       <div>
         <span>ยอดชำระ</span>
@@ -1147,21 +1228,24 @@ async function lookupBooking(event) {
   }
 }
 
-mookataCheckbox.addEventListener("change", () => {
-  if (mookataCheckbox.checked && mookataQty < 1) mookataQty = 1;
+addonGrid?.addEventListener("change", event => {
+  const id = event.target?.dataset?.addonCheck;
+  if (!id) return;
+  selectedAddonQty[id] = Math.max(1, Number(selectedAddonQty[id] || 1));
   updateSummary();
 });
 
-extraBedCheckbox.addEventListener("change", updateSummary);
+addonGrid?.addEventListener("click", event => {
+  const minusId = event.target?.dataset?.addonMinus;
+  const plusId = event.target?.dataset?.addonPlus;
+  const id = minusId || plusId;
+  if (!id) return;
 
-mookataMinusBtn.addEventListener("click", () => {
-  mookataQty = Math.max(1, mookataQty - 1);
-  updateSummary();
-});
-
-mookataPlusBtn.addEventListener("click", () => {
-  mookataCheckbox.checked = true;
-  mookataQty += 1;
+  selectedAddonQty[id] = Math.max(1, Number(selectedAddonQty[id] || 1) + (plusId ? 1 : -1));
+  const checkbox = addonGrid.querySelector(`[data-addon-check="${CSS.escape(id)}"]`);
+  if (checkbox) checkbox.checked = true;
+  const qtyText = addonGrid.querySelector(`[data-addon-qty="${CSS.escape(id)}"]`);
+  if (qtyText) qtyText.textContent = selectedAddonQty[id];
   updateSummary();
 });
 
