@@ -55,6 +55,8 @@ const addSettingAddonBtn = document.getElementById("addSettingAddonBtn");
 const settingOwnerPassword = document.getElementById("settingOwnerPassword");
 const settingOwnerPasswordConfirm = document.getElementById("settingOwnerPasswordConfirm");
 const saveOwnerPasswordBtn = document.getElementById("saveOwnerPasswordBtn");
+const settingOwnerLineToId = document.getElementById("settingOwnerLineToId");
+const saveOwnerLineToIdBtn = document.getElementById("saveOwnerLineToIdBtn");
 const settingHeroTextPill = document.getElementById("settingHeroTextPill");
 const settingHeroTextTitle = document.getElementById("settingHeroTextTitle");
 const settingHeroTextBody = document.getElementById("settingHeroTextBody");
@@ -326,6 +328,7 @@ function renderSettingsForm() {
   clearImagePreview(settingLogoPreview);
   settingPropertyPolicy.value = settings.propertyPolicy?.value || "";
   if (settingPaymentNote) settingPaymentNote.value = settings.paymentNote.value || "";
+  if (settingOwnerLineToId) settingOwnerLineToId.value = settings.lineToId?.value || "";
   const hero = normalizeHeroContent(settings.heroContent || {});
   if (settingHeroTextPill) settingHeroTextPill.value = hero.textPill || "";
   if (settingHeroTextTitle) settingHeroTextTitle.value = hero.textTitle || "";
@@ -576,6 +579,27 @@ async function saveOwnerPassword() {
   } catch (error) {
     console.error(error);
     showToast(error.message || "Save Owner password failed");
+  }
+}
+
+async function saveOwnerLineToId() {
+  const lineToId = String(settingOwnerLineToId?.value || "").trim();
+
+  try {
+    showLoadingPopup("กำลังบันทึก LINE_TO_ID");
+    const result = await apiRequest({ action: "ownerUpdateLineToId", lineToId });
+    if (!result.ok) throw new Error(result.message || "Save LINE_TO_ID failed");
+    settings = normalizeSettings({
+      ...settings,
+      lineToId: { label: "Owner LINE_TO_ID", value: result.data?.lineToId || lineToId }
+    });
+    renderSettingsForm();
+    showToast("LINE_TO_ID saved");
+  } catch (error) {
+    console.error(error);
+    showToast(error.message || "Save LINE_TO_ID failed");
+  } finally {
+    hideLoadingPopup();
   }
 }
 
@@ -1938,6 +1962,7 @@ logoutBtn.addEventListener("click", () => {
 refreshBtn.addEventListener("click", loadDashboard);
 settingsForm.addEventListener("submit", saveSettings);
 if (saveOwnerPasswordBtn) saveOwnerPasswordBtn.addEventListener("click", saveOwnerPassword);
+if (saveOwnerLineToIdBtn) saveOwnerLineToIdBtn.addEventListener("click", saveOwnerLineToId);
 settingOwnerPassword?.addEventListener("keydown", event => {
   if (event.key === "Enter") {
     event.preventDefault();
@@ -1948,6 +1973,12 @@ settingOwnerPasswordConfirm?.addEventListener("keydown", event => {
   if (event.key === "Enter") {
     event.preventDefault();
     saveOwnerPassword();
+  }
+});
+settingOwnerLineToId?.addEventListener("keydown", event => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    saveOwnerLineToId();
   }
 });
 roomForm.addEventListener("submit", createRoom);

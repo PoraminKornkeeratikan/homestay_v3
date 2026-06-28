@@ -9,6 +9,7 @@ const GOOGLE_SCRIPT_URL = "";
 const SUPABASE_URL = "https://hjhkbfxizvcqtisgcmwj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhqaGtiZnhpenZjcXRpc2djbXdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyOTA0NzEsImV4cCI6MjA5Nzg2NjQ3MX0.ylI0DTOPRUTlf404H094c--_AIArNXOW0inp6SobzSc";
 const DEFAULT_HOMESTAY_SLUG = "Wiwahrin";
+const LINE_BOOKING_NOTIFY_FUNCTION_NAME = "line-booking-notify";
 
 const OWNER_PASSWORD = "1234";
 

@@ -116,7 +116,79 @@
       border-radius: .75rem;
       font-size: 1rem;
     }
+    .hamburger-menu-item.addline-menu-item {
+      color: #0f7a3b;
+    }
+    .hamburger-menu-item.addline-menu-item .menu-icon {
+      background: #dcfce7;
+    }
     .hamburger-divider { border: none; border-top: 1px solid #edf5f0; margin: .25rem 0; }
+
+    .line-add-popup .modal-card {
+      width: min(420px, calc(100vw - 2rem));
+      text-align: center;
+      border-radius: 1.2rem;
+    }
+    .line-add-popup .modal-head {
+      justify-content: center;
+      padding-right: 0;
+      margin-bottom: .75rem;
+    }
+    .line-add-popup .modal-head h3 {
+      margin: 0;
+      font-size: 1.25rem;
+    }
+    .line-add-qr {
+      width: min(260px, 72vw);
+      aspect-ratio: 1;
+      object-fit: contain;
+      display: block;
+      margin: .75rem auto 1rem;
+      border: 1px solid #dcebe3;
+      border-radius: 1rem;
+      background: #fff;
+      padding: .5rem;
+    }
+    .line-add-popup p {
+      margin: 0 0 1rem;
+      color: #5f756d;
+      line-height: 1.6;
+      font-size: .92rem;
+    }
+    .line-register-command {
+      display: block;
+      width: 100%;
+      margin: 0 0 1rem;
+      padding: .85rem;
+      border: 1px solid #bbf7d0;
+      border-radius: .9rem;
+      background: #f0fdf4;
+      color: #14533f;
+      font-weight: 800;
+      text-align: center;
+      word-break: break-word;
+    }
+    .line-add-actions {
+      display: grid;
+      gap: .65rem;
+    }
+    .line-add-actions a,
+    .line-add-actions button {
+      border: 0;
+      border-radius: .9rem;
+      padding: .8rem 1rem;
+      font-weight: 800;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .line-add-actions a {
+      color: #fff;
+      background: #06c755;
+    }
+    .line-add-actions button {
+      color: #14533f;
+      background: #e8f6ef;
+    }
 
     /* ===== HEADER CREDIT ===== */
     .header-credit-wrap {
@@ -802,6 +874,10 @@
               <span class="menu-icon">🌐</span> ตั้งค่าเพจ
             </button>
             <hr class="hamburger-divider">
+            <button class="hamburger-menu-item addline-menu-item" onclick="openLineAddPopup()">
+              <span class="menu-icon">LINE</span> Add LINE Official
+            </button>
+            <hr class="hamburger-divider">
             <button class="hamburger-menu-item" onclick="showPanel('rooms')">
               <span class="menu-icon">🏠</span> เพิ่มห้องพัก
             </button>
@@ -1032,6 +1108,14 @@
               </div>
               <small class="input-hint">Use this password on the Owner login page for this homestay.</small>
             </div>
+            <div class="field full owner-line-setting">
+              <label>Owner LINE_TO_ID</label>
+              <div class="owner-password-fields">
+                <input type="text" id="settingOwnerLineToId" placeholder="userId หรือ groupId สำหรับรับแจ้งเตือน" />
+                <button type="button" class="secondary-btn" id="saveOwnerLineToIdBtn">Save LINE_TO_ID</button>
+              </div>
+              <small class="input-hint">ใช้รับแจ้งเตือน LINE เมื่อมีลูกค้าจองโฮมสเตย์นี้</small>
+            </div>
             <div class="field full settings-subhead">
               <h5>ตั้งค่าหน้า Hero</h5>
             </div>
@@ -1257,6 +1341,23 @@
 
   <div class="toast" id="toast"></div>
 
+  <div class="modal-overlay line-add-popup hidden" id="lineAddPopup">
+    <div class="modal-card">
+      <button type="button" class="modal-close-btn" onclick="closeLineAddPopup()" aria-label="ปิด">✕</button>
+      <div class="modal-head">
+        <h3>เพิ่มเพื่อน LINE Official</h3>
+      </div>
+      <img class="line-add-qr" src="https://qr-official.line.me/gs/M_298iaawi_BW.png?oat_content=qr" alt="QR Code LINE Official Account" />
+      <p>สแกน QR Code หรือกดปุ่มด้านล่างเพื่อเพิ่มเพื่อน จากนั้นทักข้อความนี้หา LINE Official</p>
+      <code class="line-register-command" id="lineRegisterCommand">สมัครแจ้งเตือน</code>
+      <div class="line-add-actions">
+        <a href="https://line.me/R/ti/p/@298iaawi" target="_blank" rel="noopener">เปิดใน LINE</a>
+        <button type="button" onclick="copyLineRegisterCommand()">คัดลอกข้อความสมัคร</button>
+        <button type="button" onclick="closeLineAddPopup()">ปิด</button>
+      </div>
+    </div>
+  </div>
+
   <script src="app-config.js"></script>
   <script src="api.js"></script>
   <script src="owner.js"></script>
@@ -1272,12 +1373,47 @@
       document.getElementById('hamburgerBtn').classList.remove('open');
       document.getElementById('hamburgerDropdown').classList.remove('open');
     }
+    function getLineRegisterCommand() {
+      const slug = typeof getCurrentHomestaySlug === 'function' ? getCurrentHomestaySlug() : 'homestay';
+      return `สมัครแจ้งเตือน ${slug}`;
+    }
+    function syncLineRegisterCommand() {
+      const command = document.getElementById('lineRegisterCommand');
+      if (command) command.textContent = getLineRegisterCommand();
+    }
+    function openLineAddPopup() {
+      closeHamburgerPopup();
+      syncLineRegisterCommand();
+      const popup = document.getElementById('lineAddPopup');
+      if (!popup) return;
+      popup.classList.remove('hidden');
+      document.body.classList.add('modal-open');
+    }
+    function closeLineAddPopup() {
+      const popup = document.getElementById('lineAddPopup');
+      if (!popup) return;
+      popup.classList.add('hidden');
+      document.body.classList.remove('modal-open');
+    }
+    async function copyLineRegisterCommand() {
+      const command = getLineRegisterCommand();
+      try {
+        await navigator.clipboard.writeText(command);
+        if (typeof showToast === 'function') showToast('คัดลอกข้อความสมัครแล้ว');
+      } catch {
+        if (typeof showToast === 'function') showToast(command);
+      }
+    }
     document.getElementById('hamburgerDropdown').addEventListener('click', e => {
       if (e.target.id === 'hamburgerDropdown') closeHamburgerPopup();
+    });
+    document.getElementById('lineAddPopup')?.addEventListener('click', e => {
+      if (e.target.id === 'lineAddPopup') closeLineAddPopup();
     });
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') closeHamburgerPopup();
       if (e.key === 'Escape') {
+        closeLineAddPopup();
         closeOwnerPanel('settings');
         closeOwnerPanel('rooms');
         closeOwnerPanel('roomlist');
@@ -1311,6 +1447,7 @@
         el.classList.toggle('panel-field-hidden', mode === 'account' ? index !== 0 : index !== 1);
       });
       document.querySelector('#settingsPanel .owner-password-setting')?.classList.toggle('panel-field-hidden', mode !== 'account');
+      document.querySelector('#settingsPanel .owner-line-setting')?.classList.toggle('panel-field-hidden', mode !== 'account');
       if (title) title.textContent = mode === 'page' ? '🌐 ตั้งค่าเพจ' : '⚙️ ตั้งค่าบัญชี';
       const submitBtn = document.querySelector('#settingsForm button[type="submit"]');
       if (submitBtn) submitBtn.textContent = mode === 'page' ? 'บันทึกตั้งค่าเพจ' : 'บันทึกตั้งค่าบัญชี';

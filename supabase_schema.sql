@@ -21,6 +21,7 @@ create table if not exists public.homestays (
   slug text not null unique,
   name text not null,
   owner_password text not null default '1234',
+  line_to_id text,
   description text,
   logo_url text,
   page_url text,

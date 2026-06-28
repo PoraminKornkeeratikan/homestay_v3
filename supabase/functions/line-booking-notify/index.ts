@@ -73,16 +73,18 @@ Deno.serve(async req => {
       return jsonResponse({ ok: false, message: "Method not allowed" }, 405);
     }
 
-    if (!LINE_CHANNEL_ACCESS_TOKEN || !LINE_TO_ID) {
-      return jsonResponse({
-        ok: false,
-        message: "ยังไม่ได้ตั้ง LINE_CHANNEL_ACCESS_TOKEN หรือ LINE_TO_ID ใน Supabase Secrets"
-      }, 200);
-    }
-
     const payload = await req.json().catch(() => ({}));
     const booking = (payload.booking || {}) as Record<string, unknown>;
     const homestay = (payload.homestay || {}) as Record<string, unknown>;
+    const targetLineId = text(homestay.lineToId || homestay.line_to_id || LINE_TO_ID, "");
+
+    if (!LINE_CHANNEL_ACCESS_TOKEN || !targetLineId) {
+      return jsonResponse({
+        ok: false,
+        message: "ยังไม่ได้ตั้ง LINE_CHANNEL_ACCESS_TOKEN หรือ LINE_TO_ID ของโฮมสเตย์นี้"
+      }, 200);
+    }
+
     const message = buildBookingMessage(booking, homestay);
 
     const lineResponse = await fetch("https://api.line.me/v2/bot/message/push", {
@@ -92,7 +94,7 @@ Deno.serve(async req => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        to: LINE_TO_ID,
+        to: targetLineId,
         messages: [{ type: "text", text: message }]
       })
     });

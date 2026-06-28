@@ -19,6 +19,7 @@ create table if not exists public.homestays (
   slug text not null unique,
   name text not null,
   owner_password text not null default '1234',
+  line_to_id text,
   description text,
   logo_url text,
   page_url text,
@@ -30,6 +31,7 @@ create table if not exists public.homestays (
 
 alter table public.homestays
   add column if not exists owner_password text not null default '1234',
+  add column if not exists line_to_id text,
   add column if not exists description text,
   add column if not exists logo_url text,
   add column if not exists page_url text,

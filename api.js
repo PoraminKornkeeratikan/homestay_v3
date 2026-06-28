@@ -256,7 +256,8 @@ function settingObjectFromRow(row = {}) {
     creditPerBooking: { label: "เครดิตที่ใช้ต่อการจอง", value: Number(row.credit_per_booking ?? defaultCreditPerBooking()) },
     paymentNote: { label: "หมายเหตุชำระเงิน", value: row.payment_note || "" },
     heroContent: normalizeHeroContent(row.hero_content || {}),
-    propertyPolicy: { label: "นโยบายที่พัก", value: row.property_policy || "" }
+    propertyPolicy: { label: "นโยบายที่พัก", value: row.property_policy || "" },
+    lineToId: { label: "Owner LINE_TO_ID", value: row.line_to_id || "" }
   });
 }
 
@@ -1074,7 +1075,10 @@ function queueSlipVerification(bookingId, homestaySlug) {
 
 function queueLineBookingNotification(booking = {}, homestay = {}) {
   if (!booking?.id || !isSupabaseReady) return;
-  supabaseFunctionRequest("line-booking-notify", {
+  const functionName = String(typeof LINE_BOOKING_NOTIFY_FUNCTION_NAME !== "undefined"
+    ? LINE_BOOKING_NOTIFY_FUNCTION_NAME
+    : "line-booking-notify").trim() || "line-booking-notify";
+  supabaseFunctionRequest(functionName, {
     booking,
     homestay: {
       id: homestay.id || "",
@@ -1236,6 +1240,20 @@ async function supabaseApiRequest(payload) {
     };
   }
 
+  if (action === "ownerUpdateLineToId") {
+    const updatedHomestay = await updateSupabaseHomestayLineToId(homestayId, payload.lineToId);
+    return {
+      ok: true,
+      data: {
+        id: updatedHomestay.id || homestayId,
+        slug: updatedHomestay.slug || homestay.slug,
+        name: updatedHomestay.name || homestay.name,
+        lineToId: updatedHomestay.line_to_id || ""
+      },
+      mode: "supabase"
+    };
+  }
+
   if (action === "bootstrap") {
     const [settingsRows, roomRows, bookingRows, planRows] = await Promise.all([
       supabaseRequest(`homestay_settings?homestay_id=eq.${homestayId}&select=*`),
@@ -1252,7 +1270,7 @@ async function supabaseApiRequest(payload) {
       data: {
         homestay,
         plan: planRows?.[0] || null,
-        settings: settingObjectFromRow({ ...(settingsRows?.[0] || {}), page_url: homestay.page_url, gps_url: homestay.gps_url, logo_url: settingsRows?.[0]?.logo_url || homestay.logo_url }),
+        settings: settingObjectFromRow({ ...(settingsRows?.[0] || {}), page_url: homestay.page_url, gps_url: homestay.gps_url, logo_url: settingsRows?.[0]?.logo_url || homestay.logo_url, line_to_id: homestay.line_to_id }),
         rooms: (roomRows || []).map(roomObjectFromRow),
         bookings
       },
@@ -1451,6 +1469,17 @@ async function localApiRequest(payload) {
     const ownerPassword = normalizeOwnerPassword(payload.ownerPassword);
     localSaveHomestayPassword(slug, ownerPassword);
     return { ok: true, data: { id: slug, slug, ownerPassword }, mode: "local" };
+  }
+
+  if (payload.action === "ownerUpdateLineToId") {
+    const slug = typeof getCurrentHomestaySlug === "function" ? getCurrentHomestaySlug() : "homestay";
+    const lineToId = String(payload.lineToId || "").trim();
+    settings = {
+      ...settings,
+      lineToId: { label: "Owner LINE_TO_ID", value: lineToId }
+    };
+    localSaveSettings(settings);
+    return { ok: true, data: { id: slug, slug, lineToId }, mode: "local" };
   }
 
   if (payload.action === "lookupBooking") {
