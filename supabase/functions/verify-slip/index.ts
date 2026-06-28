@@ -461,6 +461,36 @@ async function handleInlinePrecheck(body: Record<string, unknown>) {
   });
 }
 
+
+async function deductCreditsForBooking(homestayId: string, bookingId: string) {
+  const [planRows, settingsRows] = await Promise.all([
+    supabaseRest(`homestay_plans?homestay_id=eq.${encodeURIComponent(homestayId)}&select=*`),
+    supabaseRest(`homestay_settings?homestay_id=eq.${encodeURIComponent(homestayId)}&select=credit_per_booking`)
+  ]);
+  const plan = planRows?.[0];
+  if (!plan || plan.plan_type !== "credit") return; // yearly/infinity ไม่ตัด
+
+  const creditPerBooking = Number(settingsRows?.[0]?.credit_per_booking || 40);
+  const nextCredits = Math.max(0, Number(plan.credits || 0) - creditPerBooking);
+
+  await supabaseRest(`homestay_plans?homestay_id=eq.${encodeURIComponent(homestayId)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ credits: nextCredits })
+  });
+
+  await supabaseRest("credit_ledger", {
+    method: "POST",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({
+      homestay_id: homestayId,
+      booking_id: bookingId,
+      amount: -creditPerBooking,
+      reason: "booking_auto_confirmed"
+    })
+  });
+}
+
 async function handleStoredBookingVerification(bookingId: string, homestaySlug: string) {
   const bookingRows = await supabaseRest(
     `bookings?id=eq.${encodeURIComponent(bookingId)}&select=*,homestays!inner(id,slug)`
@@ -498,10 +528,18 @@ async function handleStoredBookingVerification(bookingId: string, homestaySlug: 
   const patch = buildPatchFromDecision(decision, easySlipResult.data);
   const updatedRows = await updateBooking(bookingId, patch);
 
+  // สลิปผ่านทุกอย่าง → ตัดเครดิตอัตโนมัติ
+  if (decision.passed) {
+    await deductCreditsForBooking(String(booking.homestay_id), bookingId).catch(err => {
+      console.error("deductCreditsForBooking failed:", err);
+    });
+  }
+
   return jsonResponse({
     ok: true,
     data: {
       passed: decision.passed,
+      reviewRequired: decision.reviewRequired,
       message: decision.message,
       booking: updatedRows?.[0] || null
     }

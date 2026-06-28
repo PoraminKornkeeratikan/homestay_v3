@@ -50,22 +50,21 @@ function normalizeSlug(value: unknown) {
     .replace(/^-+|-+$/g, "");
 }
 
-function parseRegisterSlug(message: string) {
-  const text = String(message || "").trim();
-  if (!text) return "";
+// แยก "ระบบแจ้งเตือน <ชื่อโฮมสเตย์>" ออกมา — คืน string หรือ "" ถ้าไม่ match
+function parseNotifyCommand(message: string): string {
+  const text = String(message || "").trim().replace(/\s+/g, " ");
 
-  const normalized = text.replace(/\s+/g, " ");
   const patterns = [
+    /^ระบบแจ้งเตือน\s+(.+)$/i,
     /^สมัครแจ้งเตือน\s+(.+)$/i,
     /^ลงทะเบียนแจ้งเตือน\s+(.+)$/i,
     /^แจ้งเตือน\s+(.+)$/i,
-    /^register\s+(.+)$/i,
-    /^line\s+(.+)$/i
+    /^register\s+(.+)$/i
   ];
 
   for (const pattern of patterns) {
-    const match = normalized.match(pattern);
-    if (match?.[1]) return normalizeSlug(match[1]);
+    const match = text.match(pattern);
+    if (match?.[1]) return match[1].trim(); // คืนชื่อดิบ ยังไม่แปลงเป็น slug
   }
 
   return "";
@@ -78,20 +77,34 @@ function getLineTargetId(source: Record<string, unknown>) {
   return String(source.userId || "");
 }
 
-async function updateHomestayLineId(slug: string, lineToId: string) {
-  const rows = await supabaseRest(
-    `homestays?slug=eq.${encodeURIComponent(slug)}&select=id,slug,name&limit=1`
-  );
-  const homestay = rows?.[0];
-  if (!homestay?.id) return null;
+// ค้นหาโฮมสเตย์จากชื่อ (name) หรือ slug — รองรับทั้งสอง
+async function findHomestayByNameOrSlug(query: string) {
+  const slug = normalizeSlug(query);
+  const nameQuery = encodeURIComponent(query);
+  const slugQuery = encodeURIComponent(slug);
 
-  const updated = await supabaseRest(`homestays?id=eq.${encodeURIComponent(homestay.id)}`, {
+  // ลองค้นจาก slug ก่อน
+  const bySlug = await supabaseRest(
+    `homestays?slug=eq.${slugQuery}&select=id,slug,name&limit=1`
+  );
+  if (bySlug?.[0]?.id) return bySlug[0];
+
+  // ถ้าไม่เจอ ลองค้นจากชื่อแบบ case-insensitive
+  const byName = await supabaseRest(
+    `homestays?name=ilike.${encodeURIComponent("*" + query + "*")}&select=id,slug,name&limit=1`
+  );
+  if (byName?.[0]?.id) return byName[0];
+
+  return null;
+}
+
+async function updateHomestayLineId(homestayId: string, lineToId: string) {
+  const updated = await supabaseRest(`homestays?id=eq.${encodeURIComponent(homestayId)}`, {
     method: "PATCH",
     headers: { Prefer: "return=representation" },
     body: JSON.stringify({ line_to_id: lineToId })
   });
-
-  return updated?.[0] || homestay;
+  return updated?.[0] || null;
 }
 
 async function replyLine(replyToken: string, text: string) {
@@ -163,44 +176,60 @@ Deno.serve(async req => {
 
     for (const event of events) {
       const type = String(event?.type || "");
-      const messageType = String(event?.message?.type || "");
       const replyToken = String(event?.replyToken || "");
-      const text = String(event?.message?.text || "").trim();
 
-      if (type !== "message" || messageType !== "text") {
+      // ── Follow event: Owner เพิ่ม Bot เป็นเพื่อน ──
+      if (type === "follow") {
+        await replyLine(
+          replyToken,
+          "สวัสดีครับ! 👋\n\nเพื่อเปิดใช้งานระบบแจ้งเตือนการจอง\nกรุณาพิมพ์:\n\nระบบแจ้งเตือน ชื่อโฮมสเตย์\n\nตัวอย่าง:\nระบบแจ้งเตือน Wintery House"
+        );
+        results.push({ event: "follow", replied: true });
+        continue;
+      }
+
+      // ── Message event: รับคำสั่ง ──
+      if (type !== "message" || String(event?.message?.type || "") !== "text") {
         results.push({ skipped: true, reason: "not_text_message" });
         continue;
       }
 
-      const slug = parseRegisterSlug(text);
-      if (!slug) {
+      const text = String(event?.message?.text || "").trim();
+      const homestayQuery = parseNotifyCommand(text);
+
+      if (!homestayQuery) {
         await replyLine(
           replyToken,
-          "พิมพ์คำสั่งแบบนี้เพื่อเปิดแจ้งเตือน:\nสมัครแจ้งเตือน slug-ของโฮมสเตย์"
+          "กรุณาพิมพ์:\nระบบแจ้งเตือน ชื่อโฮมสเตย์\n\nตัวอย่าง:\nระบบแจ้งเตือน Wintery House"
         );
-        results.push({ skipped: true, reason: "missing_slug" });
+        results.push({ skipped: true, reason: "unrecognized_command" });
         continue;
       }
 
       const lineToId = getLineTargetId(event.source || {});
       if (!lineToId) {
-        await replyLine(replyToken, "ไม่พบ LINE userId/groupId สำหรับบันทึกแจ้งเตือน");
-        results.push({ ok: false, slug, reason: "missing_line_target" });
+        await replyLine(replyToken, "ไม่พบ LINE ID สำหรับบันทึกแจ้งเตือน");
+        results.push({ ok: false, reason: "missing_line_target" });
         continue;
       }
 
-      const homestay = await updateHomestayLineId(slug, lineToId);
+      const homestay = await findHomestayByNameOrSlug(homestayQuery);
       if (!homestay) {
-        await replyLine(replyToken, `ไม่พบโฮมสเตย์ slug: ${slug}`);
-        results.push({ ok: false, slug, reason: "homestay_not_found" });
+        await replyLine(
+          replyToken,
+          `ไม่พบโฮมสเตย์ "${homestayQuery}"\n\nกรุณาตรวจสอบชื่อแล้วลองใหม่อีกครั้ง`
+        );
+        results.push({ ok: false, query: homestayQuery, reason: "homestay_not_found" });
         continue;
       }
+
+      await updateHomestayLineId(homestay.id, lineToId);
 
       await replyLine(
         replyToken,
-        `บันทึกแจ้งเตือน LINE สำเร็จ\nโฮมสเตย์: ${homestay.name || homestay.slug || slug}`
+        `✅ เปิดใช้งานระบบแจ้งเตือนสำเร็จ!\nโฮมสเตย์: ${homestay.name || homestay.slug}\n\nระบบจะแจ้งเตือนมาที่นี่ทุกครั้งที่มีการจองใหม่ครับ 🏠`
       );
-      results.push({ ok: true, slug, lineToId });
+      results.push({ ok: true, query: homestayQuery, homestayId: homestay.id, lineToId });
     }
 
     return jsonResponse({ ok: true, results });

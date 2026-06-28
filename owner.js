@@ -1479,8 +1479,16 @@ function renderBookingTable() {
         </td>
         <td class="booking-actions-cell">
           <div class="action-row">
-            <button onclick="updateStatus('${booking.id}', 'ยืนยันแล้ว')">ยืนยัน</button>
-            <button onclick="updateStatus('${booking.id}', 'ยกเลิก')">ยกเลิก</button>
+            ${(() => {
+              const confirmed = booking.status === "ยืนยันแล้ว" || booking.status === "ชำระแล้ว";
+              const cancelled = booking.status === "ยกเลิก";
+              if (confirmed) return '<span class="badge-confirmed">✅ ยืนยันแล้ว</span>';
+              if (cancelled) return '<span class="badge-cancelled">❌ ยกเลิกแล้ว</span>';
+              return `
+                <button onclick="updateStatus('${booking.id}', 'ยืนยันแล้ว')" class="btn-confirm">ยืนยัน</button>
+                <button onclick="updateStatus('${booking.id}', 'ยกเลิก')" class="btn-cancel">ยกเลิก</button>
+              `;
+            })()}
           </div>
         </td>
       </tr>
@@ -1490,9 +1498,13 @@ function renderBookingTable() {
 
 async function updateStatus(id, status) {
   try {
-    await apiRequest({ action: "updateStatus", id, status });
-    await loadDashboard();
-    showToast(`เปลี่ยนสถานะเป็น ${status}`);
+    const result = await apiRequest({ action: "updateStatus", id, status });
+    if (!result.ok) {
+      showToast(result.message || "เปลี่ยนสถานะไม่สำเร็จ");
+      return;
+    }
+    await loadDashboard(true);
+    showToast(status === "ยืนยันแล้ว" ? "✅ ยืนยันการจองแล้ว" : `เปลี่ยนสถานะเป็น ${status}`);
   } catch (error) {
     console.error(error);
     showToast("เปลี่ยนสถานะไม่สำเร็จ");
@@ -1944,6 +1956,7 @@ loginBtn.addEventListener("click", async () => {
     updateHeaderVisibility();
     await loadDashboard();
     renderCreditCard(); renderHeaderCredit();
+    startPolling();
     showToast("Login successful");
   } catch (error) {
     console.error(error);
@@ -1959,6 +1972,48 @@ logoutBtn.addEventListener("click", () => {
   updateHeaderVisibility();
 });
 
+
+// ── Smart Polling ──────────────────────────────────────────────
+// เช็คทุก 10 วิ ว่ามีการจองใหม่หรืออัพเดทไหม โดยดึงแค่ record ล่าสุด 1 แถว
+let _pollingLastId = null;
+let _pollingTimer = null;
+
+async function _pollNewBookings() {
+  try {
+    const slug = typeof getCurrentHomestaySlug === "function" ? getCurrentHomestaySlug() : "";
+    if (!slug || ownerDashboard.classList.contains("hidden")) return; // ยังไม่ login ไม่ต้อง poll
+
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/bookings?select=id,updated_at&order=updated_at.desc&limit=1`,
+      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+    );
+    if (!res.ok) return;
+    const rows = await res.json();
+    const latest = rows?.[0];
+    const latestKey = latest ? `${latest.id}_${latest.updated_at}` : null;
+
+    if (_pollingLastId === null) {
+      // ครั้งแรก — แค่จำค่าไว้ ไม่ต้อง reload
+      _pollingLastId = latestKey;
+      return;
+    }
+
+    if (latestKey && latestKey !== _pollingLastId) {
+      _pollingLastId = latestKey;
+      await loadDashboard(true); // silent reload ไม่แสดง loading popup
+    }
+  } catch (_) {
+    // silent fail — ไม่ทำให้หน้าพัง
+  }
+}
+
+function startPolling() {
+  if (_pollingTimer) clearInterval(_pollingTimer);
+  _pollingLastId = null;
+  _pollNewBookings(); // เช็คทันทีครั้งแรก
+  _pollingTimer = setInterval(_pollNewBookings, 10000); // ทุก 10 วิ
+}
+// ────────────────────────────────────────────────────────────────
 refreshBtn.addEventListener("click", loadDashboard);
 settingsForm.addEventListener("submit", saveSettings);
 if (saveOwnerPasswordBtn) saveOwnerPasswordBtn.addEventListener("click", saveOwnerPassword);

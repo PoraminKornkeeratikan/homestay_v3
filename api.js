@@ -1387,26 +1387,46 @@ async function supabaseApiRequest(payload) {
       body: JSON.stringify(row)
     });
 
-    await deductBookingCredits(homestayId, rows?.[0]?.id || null);
-
+    // ไม่ตัดเครดิตตอนจอง — รอผลตรวจสลิปก่อน
     if (rows?.[0]?.id && slipUrl && String(row.slip_verify_status || "not_checked") === "not_checked") {
       queueSlipVerification(rows[0].id, homestay.slug);
     }
 
     const booking = rows?.[0] ? await signBookingSlipUrls(bookingObjectFromRow(rows[0])) : null;
+    if (booking) queueLineBookingNotification(booking, homestay);
     return { ok: true, data: booking, mode: "supabase" };
   }
 
   if (action === "updateStatus") {
-    const next = { status: payload.status };
-    if (payload.status === "ชำระแล้ว" || payload.status === "ยืนยันแล้ว") next.payment_status = "ชำระแล้ว";
-    if (payload.status === "ยกเลิก") next.payment_status = "ยกเลิก";
+    const newStatus = payload.status;
+
+    // ดึงสถานะปัจจุบันก่อน
+    const current = await supabaseRequest(
+      `bookings?id=eq.${payload.id}&homestay_id=eq.${homestayId}&select=status,payment_status&limit=1`
+    );
+    const currentStatus = current?.[0]?.status || "";
+
+    // ป้องกัน: ถ้ายืนยันแล้วห้ามแก้กลับเป็นยกเลิก
+    const isAlreadyConfirmed = currentStatus === "ยืนยันแล้ว" || currentStatus === "ชำระแล้ว";
+    if (isAlreadyConfirmed && newStatus === "ยกเลิก") {
+      return { ok: false, message: "ไม่สามารถยกเลิกรายการที่ยืนยันแล้วได้" };
+    }
+
+    const next = { status: newStatus };
+    if (newStatus === "ชำระแล้ว" || newStatus === "ยืนยันแล้ว") next.payment_status = "ชำระแล้ว";
+    if (newStatus === "ยกเลิก") next.payment_status = "ยกเลิก";
 
     await supabaseRequest(`bookings?id=eq.${payload.id}&homestay_id=eq.${homestayId}`, {
       method: "PATCH",
       headers: { Prefer: "return=minimal" },
       body: JSON.stringify(next)
     });
+
+    // ตัดเครดิตเมื่อ Owner กดยืนยัน (เฉพาะกรณียังไม่เคยยืนยันมาก่อน)
+    if ((newStatus === "ยืนยันแล้ว" || newStatus === "ชำระแล้ว") && !isAlreadyConfirmed) {
+      await deductBookingCredits(homestayId, payload.id);
+    }
+
     return { ok: true, mode: "supabase" };
   }
 
