@@ -17,7 +17,8 @@
     <a class="brand" href="customer.html">
       <img class="site-logo" src="default-home-logo.svg" alt="โลโก้โฮมสเตย์" />
       <div>
-        <h1>ชื่อที่พัก</h1>
+        <h1>โฮมสเตย์
+        </h1>
         <p>จองห้องพัก • โฮมสเตย์</p>
       </div>
     </a>
@@ -189,7 +190,7 @@
             </div>
           </div>
 
-          <div class="payment-help">
+          <div class="payment-help" id="paymentHelpText">
             <b>หลังโอนเงิน:</b> กรุณาแนบสลิปการโอนเงินก่อนส่งคำขอจอง หากไม่แนบสลิป ระบบจะไม่ให้ส่งจอง
           </div>
 
@@ -274,19 +275,9 @@
         <div class="ticket-lines" id="ticketDetails"></div>
       </div>
 
-      <div class="capture-warning">
-        <b>สำคัญ:</b> กรุณาแคปหน้าจอนี้ หรือกดปุ่ม “บันทึกรูปภาพ” เพื่อใช้ยื่นตอนมาเข้าพัก
-      </div>
-
-      <label class="capture-check">
-        <input type="checkbox" id="captureDoneCheck" />
-        <span>ฉันแคปหน้าจอไว้แล้ว</span>
-      </label>
-
       <div class="modal-actions">
         <button type="button" class="ghost-btn" id="backToEditBtn">ย้อนกลับไปแก้ข้อมูล</button>
-        <button type="button" id="saveTicketImageBtn">บันทึกรูปภาพ</button>
-        <button type="button" id="confirmSendBookingBtn" disabled>ยืนยันส่งคำจอง</button>
+        <button type="button" id="confirmSendBookingBtn">ยืนยันการจอง</button>
       </div>
     </div>
   </div>

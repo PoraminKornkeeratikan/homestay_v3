@@ -8,12 +8,29 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
-  <link rel="icon" href="default-home-logo.svg" type="image/svg+xml" />
+  <link rel="icon" href="aodbooking-logo.png" type="image/png" />
   <style>
     /* ======= Admin Page Extra Styles ======= */
     .admin-login { display:flex; align-items:center; justify-content:center; min-height:80vh; }
 
     body.login-hidden header.topbar { display: none; }
+
+    .admin-brand-logo {
+      width: 54px;
+      height: 54px;
+      object-fit: contain;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 10px 24px rgba(185, 28, 28, .12);
+    }
+
+    .admin-login-logo {
+      width: min(220px, 78%);
+      height: auto;
+      display: block;
+      margin: 0 auto 18px;
+      object-fit: contain;
+    }
 
     .plan-grid {
       display: grid;
@@ -133,14 +150,14 @@
 </head>
 <body class="login-hidden" data-page-title-suffix="Admin">
   <header class="topbar">
-    <a class="brand" href="owner.html">
+    <div class="brand">
+      <img class="admin-brand-logo" src="aodbooking-logo.png" alt="AODbooking" />
       <div>
         <h1>Admin</h1>
         <p>จัดการ Owner</p>
       </div>
-    </a>
+    </div>
     <nav>
-      <a class="nav-link" href="owner.html">Owner</a>
       <button type="button" class="ghost-btn" id="adminLogoutBtn">ออกจากระบบ</button>
     </nav>
   </header>
@@ -149,7 +166,7 @@
     <!-- Login -->
     <section class="admin-login" id="adminLoginBox">
       <div class="login-card">
-        <img class="logo large" src="default-home-logo.svg" alt="โลโก้" />
+        <img class="admin-login-logo" src="aodbooking-logo.png" alt="AODbooking" />
         <h2>Admin</h2>
         <p style="color:#6b7280;font-size:.9rem;margin:.5rem 0 1.25rem;">สำหรับ Admin เท่านั้น</p>
         <input type="password" id="adminPassword" placeholder="กรอกรหัสผ่าน" />

@@ -661,8 +661,9 @@ button, input, select, textarea { font-family: inherit; }
   font-size: 13px;
 }
 
-nav {
+header.topbar nav {
   display: flex;
+  justify-content: flex-end;
   gap: 8px;
   padding: 6px;
   background: var(--green-50);
@@ -1527,10 +1528,12 @@ input:focus, select:focus, textarea:focus {
 #roomListPanel.visible .room-owner-top {
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 #roomListPanel.visible .room-owner-top .room-owner-title {
   flex: 1 1 auto;
+  min-width: 0;
 }
 
 #roomListPanel.visible .room-top-price-field {
@@ -1688,6 +1691,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .room-owner-card {
+  min-width: 0;
   display: grid;
   grid-template-columns: 180px minmax(0, 1fr);
   gap: 16px;
@@ -1719,6 +1723,7 @@ input:focus, select:focus, textarea:focus {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  min-width: 0;
 }
 
 .room-owner-title {
@@ -1756,11 +1761,13 @@ input:focus, select:focus, textarea:focus {
 .room-owner-field .inline-input {
   width: 100%;
   min-width: 0;
+  box-sizing: border-box;
 }
 
 .room-owner-field textarea.inline-input {
   min-height: 104px;
   resize: vertical;
+  min-width: 0;
 }
 
 .room-closed-note {
@@ -2646,7 +2653,7 @@ td small {
     gap: 14px;
   }
 
-  nav { width: 100%; }
+  header.topbar nav { width: auto; }
   .nav-link { flex: 1; text-align: center; }
   .section-head { align-items: flex-start; flex-direction: column; }
 }
@@ -5878,6 +5885,286 @@ body.modal-open {
   }
 }
 
+/* Last-pass room manager layout polish. */
+#roomListPanel.visible {
+  width: calc(100vw - 18px);
+}
+
+#roomListPanel.visible .section-mini-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 38px;
+  align-items: center;
+  column-gap: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 14px 14px 22px;
+}
+
+#roomListPanel.visible .section-mini-head h4 {
+  margin: 0;
+  white-space: nowrap;
+}
+
+#roomListPanel.visible .section-mini-head p {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#roomListPanel.visible .panel-close-btn {
+  position: static;
+  justify-self: end;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+}
+
+#roomListPanel.visible .room-card-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 14px;
+}
+
+#roomListPanel.visible .room-owner-card {
+  position: relative;
+  grid-template-columns: 136px minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px;
+  border-radius: 16px;
+  align-items: start;
+}
+
+#roomListPanel.visible .room-owner-main {
+  padding-top: 28px;
+}
+
+#roomListPanel.visible .room-owner-media .room-thumb {
+  height: 130px;
+  border-radius: 12px;
+}
+
+#roomListPanel.visible .room-owner-top {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(96px, .58fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+#roomListPanel.visible .room-owner-title,
+#roomListPanel.visible .room-owner-field {
+  min-width: 0;
+}
+
+#roomListPanel.visible .room-top-price-field,
+#roomListPanel.visible .room-top-discount-field {
+  flex: none;
+}
+
+#roomListPanel.visible .room-top-discount-field {
+  grid-column: 2 / 4;
+  width: min(100%, 180px);
+}
+
+#roomListPanel.visible .status {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
+  padding: 8px 12px;
+}
+
+#roomListPanel.visible .room-owner-fields {
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 10px;
+}
+
+#roomListPanel.visible .upload-field {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+
+#roomListPanel.visible .detail-field {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+#roomListPanel.visible .room-owner-field textarea.inline-input {
+  min-height: 110px;
+  height: 110px;
+}
+
+#roomListPanel.visible .inline-file-box {
+  min-height: 92px;
+  align-content: center;
+}
+
+#roomListPanel.visible .room-card-actions {
+  margin-top: 2px;
+  justify-content: flex-end;
+}
+
+#roomListPanel.visible .room-card-actions button {
+  min-height: 38px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+@media (min-width: 681px) and (max-width: 1180px) {
+  #roomListPanel.visible .room-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #roomListPanel.visible .room-owner-card {
+    grid-template-columns: 118px minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px;
+  }
+
+  #roomListPanel.visible .room-owner-media .room-thumb {
+    height: 116px;
+  }
+
+  #roomListPanel.visible .room-owner-top {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  #roomListPanel.visible .room-top-price-field,
+  #roomListPanel.visible .room-top-discount-field {
+    grid-column: 1;
+    width: 100%;
+  }
+
+  #roomListPanel.visible .room-owner-fields {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  #roomListPanel.visible .upload-field,
+  #roomListPanel.visible .detail-field {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  #roomListPanel.visible .room-owner-field textarea.inline-input {
+    width: 100%;
+    min-height: 84px;
+    height: 84px;
+  }
+
+  #roomListPanel.visible .inline-file-box {
+    min-height: 72px;
+  }
+
+  #roomListPanel.visible .room-card-actions {
+    justify-content: flex-end;
+  }
+
+  #roomListPanel.visible .room-card-actions button {
+    padding-inline: 12px;
+  }
+}
+
+@media (max-width: 680px) {
+  #roomListPanel.visible .room-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  #roomListPanel.visible .section-mini-head {
+    grid-template-columns: minmax(0, 1fr) 36px;
+    padding: 12px;
+  }
+
+  #roomListPanel.visible .section-mini-head h4,
+  #roomListPanel.visible .section-mini-head p {
+    grid-column: 1;
+  }
+
+  #roomListPanel.visible .section-mini-head p {
+    margin-top: 3px;
+    white-space: normal;
+  }
+
+  #roomListPanel.visible .panel-close-btn {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    width: 36px;
+    height: 36px;
+  }
+
+  #roomListPanel.visible .room-owner-card {
+    grid-template-columns: 118px minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px;
+  }
+
+  #roomListPanel.visible .room-owner-media .room-thumb {
+    height: 112px;
+  }
+
+  #roomListPanel.visible .room-owner-top {
+    grid-template-columns: minmax(0, 1fr) minmax(84px, .65fr);
+  }
+
+  #roomListPanel.visible .room-top-discount-field {
+    grid-column: 2;
+    grid-row: 2;
+    width: 100%;
+  }
+
+  #roomListPanel.visible .status {
+    position: static;
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  #roomListPanel.visible .room-owner-main {
+    padding-top: 0;
+  }
+
+  #roomListPanel.visible .room-top-price-field {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  #roomListPanel.visible .room-owner-fields {
+    grid-template-columns: 1fr;
+  }
+
+  #roomListPanel.visible .upload-field,
+  #roomListPanel.visible .detail-field {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  #roomListPanel.visible .room-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #roomListPanel.visible .room-owner-card {
+    grid-template-columns: 1fr;
+  }
+
+  #roomListPanel.visible .room-owner-media .room-thumb {
+    height: 170px;
+  }
+
+  #roomListPanel.visible .room-card-actions {
+    justify-content: stretch;
+  }
+
+  #roomListPanel.visible .room-card-actions button {
+    flex: 1 1 0;
+  }
+}
+
 /* Last-pass mobile owner stats layout. */
 @media (max-width: 640px) {
   .owner-stats.stats {
@@ -5938,5 +6225,56 @@ body.modal-open {
 
   .owner-stats .stat-revenue strong {
     font-size: 28px;
+  }
+}
+/* Customer room cards: two per row with square, even images. */
+.room-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.room-grid .room-img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  border-radius: 18px;
+}
+
+@media (max-width: 640px) {
+  .room-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .room-grid .room-img {
+    border-radius: 12px;
+  }
+
+  .room-grid .room-card {
+    padding: 8px;
+    border-radius: 14px;
+  }
+
+  .room-grid .room-card h4 {
+    font-size: 15px;
+    line-height: 1.25;
+  }
+
+  .room-grid .room-meta,
+  .room-grid .customer-room-actions {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .room-grid .price {
+    font-size: 16px;
+  }
+
+  .room-grid .customer-room-actions button,
+  .room-grid .room-card button {
+    width: 100%;
+    min-height: 34px;
+    padding: 7px 8px;
+    font-size: 11px;
   }
 }

@@ -632,7 +632,7 @@
       inset: 0;
       z-index: 9000;
       display: block !important;
-      width: min(980px, calc(100vw - 16px));
+      width: calc(100vw - 18px);
       height: auto;
       max-height: calc(100vh - 16px);
       margin: auto;
@@ -662,15 +662,22 @@
     .rooms-panel.visible .section-mini-head,
     #roomListPanel.visible .section-mini-head {
       position: relative;
+      width: 100%;
+      box-sizing: border-box;
       padding-right: 46px;
     }
 
     .settings-panel.visible .panel-close-btn,
-    .rooms-panel.visible .panel-close-btn,
-    #roomListPanel.visible .panel-close-btn {
+    .rooms-panel.visible .panel-close-btn {
       position: absolute;
       top: 0;
       right: 0;
+      z-index: 2;
+    }
+
+    #roomListPanel.visible .panel-close-btn {
+      position: static;
+      justify-self: end;
       z-index: 2;
     }
 
