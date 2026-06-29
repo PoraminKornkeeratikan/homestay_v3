@@ -570,18 +570,13 @@
       const amountInput = card?.querySelector('[data-role="creditAmount"]');
       const rawAmount = Number(amountInput?.value || 0);
       const amount = Number.isFinite(rawAmount) && rawAmount > 0 ? rawAmount : 1;
-      const currentCredits = Number(homestay.credits ?? homestay.plan?.credits ?? 0);
-      const nextCredits = Math.max(0, currentCredits + (delta * amount));
+      const creditDelta = delta * amount;
 
       try {
         const result = await apiRequest({
-          action: "adminUpdateHomestayPlan",
+          action: "adminAdjustHomestayCredits",
           homestayId,
-          plan: {
-            planType: "credit",
-            credits: nextCredits,
-            status: "active"
-          }
+          delta: creditDelta
         });
         if (!result.ok) throw new Error(result.message || "บันทึกเครดิตไม่สำเร็จ");
         showToast(delta > 0 ? "เติมเครดิตแล้ว" : "ลบเครดิตแล้ว");
@@ -1123,10 +1118,15 @@
     // Poll ทุก 5 วินาทีเพื่ออัปเดต pending list
     setInterval(() => {
       if (!document.getElementById("adminDashboard").classList.contains("hidden")) {
+        const active = document.activeElement;
+        const editingHomestayList = active
+          && adminHomestayList?.contains(active)
+          && ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName);
+        if (!editingHomestayList) loadAdminHomestays();
         renderPendingRequests();
         renderTopupHistory();
       }
-    }, 5000);
+    }, 15000);
 
     // Login
     function setAdminLoginState(showLogin) {

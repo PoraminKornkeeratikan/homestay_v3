@@ -309,6 +309,7 @@ function roomObjectFromRow(row = {}) {
     id: row.id,
     name: row.name || "",
     price: Number(row.price || 0),
+    discountPrice: Number(row.discount_price ?? row.discountPrice ?? 0),
     detail: row.detail || "",
     image: row.image_url || "",
     galleryImages: Array.isArray(row.gallery_images) ? row.gallery_images : [],
@@ -325,6 +326,7 @@ function roomRowFromObject(room = {}, homestayId) {
   if (homestayId) row.homestay_id = homestayId;
   if (Object.prototype.hasOwnProperty.call(room, "name")) row.name = room.name;
   if (Object.prototype.hasOwnProperty.call(room, "price")) row.price = Number(room.price || 0);
+  if (Object.prototype.hasOwnProperty.call(room, "discountPrice")) row.discount_price = Math.max(0, Number(room.discountPrice || 0));
   if (Object.prototype.hasOwnProperty.call(room, "detail")) row.detail = room.detail || "";
   if (Object.prototype.hasOwnProperty.call(room, "active")) row.active = room.active === true;
   if (Object.prototype.hasOwnProperty.call(room, "closedUntil")) row.closed_until = room.closedUntil || null;
@@ -522,6 +524,39 @@ async function deductBookingCredits(homestayId, bookingId) {
 
   syncPlanFromRow(updated?.[0] || planPayload);
   return updated?.[0] || planPayload;
+}
+
+async function adjustSupabaseCredits(homestayId, delta, options = {}) {
+  const amount = Number(delta || 0);
+  if (!Number.isFinite(amount) || amount === 0) {
+    const rows = await supabaseRequest(`homestay_plans?homestay_id=eq.${encodeURIComponent(homestayId)}&select=*&limit=1`);
+    return rows?.[0] || null;
+  }
+
+  const planRows = await supabaseRequest(`homestay_plans?homestay_id=eq.${encodeURIComponent(homestayId)}&select=*&limit=1`);
+  const currentPlan = planRows?.[0] || null;
+  const currentCredits = Number(currentPlan?.credits || 0);
+  const nextCredits = Math.max(0, currentCredits + amount);
+  const plan = await saveSupabasePlan({
+    planType: "credit",
+    credits: nextCredits,
+    status: "active"
+  }, homestayId, { sync: options.sync !== false });
+
+  await supabaseRequest("credit_ledger", {
+    method: "POST",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({
+      homestay_id: homestayId,
+      booking_id: options.bookingId || null,
+      amount,
+      reason: options.reason || (amount > 0 ? "credit_adjustment" : "credit_removed")
+    })
+  }).catch(error => {
+    console.warn("credit ledger write failed", error);
+  });
+
+  return plan;
 }
 
 async function getSupabaseHomestay() {
@@ -1091,6 +1126,25 @@ function queueLineBookingNotification(booking = {}, homestay = {}) {
   });
 }
 
+function queueBookingEmailConfirmation(booking = {}, homestay = {}) {
+  const email = String(booking.email || booking.guest_email || "").trim();
+  if (!email || !isSupabaseReady) return;
+  const functionName = String(typeof BOOKING_EMAIL_FUNCTION_NAME !== "undefined"
+    ? BOOKING_EMAIL_FUNCTION_NAME
+    : "send-booking-email").trim() || "send-booking-email";
+
+  supabaseFunctionRequest(functionName, {
+    booking,
+    homestay: {
+      id: homestay.id || "",
+      name: homestay.name || "",
+      slug: homestay.slug || ""
+    }
+  }).catch(error => {
+    console.warn("Booking email confirmation skipped:", error?.message || error);
+  });
+}
+
 function normalizeGalleryImages(room = {}) {
   const images = [];
   const addImage = value => {
@@ -1184,6 +1238,16 @@ async function supabaseApiRequest(payload) {
     const homestayId = String(payload.homestayId || "").trim();
     if (!homestayId) throw new Error("Missing homestay id.");
     const plan = await saveSupabasePlan(payload.plan || {}, homestayId, { sync: false });
+    return { ok: true, data: plan, mode: "supabase" };
+  }
+
+  if (action === "adminAdjustHomestayCredits") {
+    const homestayId = String(payload.homestayId || "").trim();
+    if (!homestayId) throw new Error("Missing homestay id.");
+    const plan = await adjustSupabaseCredits(homestayId, payload.delta, {
+      sync: false,
+      reason: Number(payload.delta || 0) >= 0 ? "admin_credit_added" : "admin_credit_removed"
+    });
     return { ok: true, data: plan, mode: "supabase" };
   }
 
@@ -1301,7 +1365,10 @@ async function supabaseApiRequest(payload) {
     }
 
     const booking = rows?.[0] ? await signBookingSlipUrls(bookingObjectFromRow(rows[0])) : null;
-    if (booking) queueLineBookingNotification(booking, homestay);
+    if (booking) {
+      queueLineBookingNotification(booking, homestay);
+      queueBookingEmailConfirmation(booking, homestay);
+    }
     return { ok: true, data: booking, mode: "supabase" };
   }
 
@@ -1329,6 +1396,13 @@ async function supabaseApiRequest(payload) {
     return { ok: true, data: plan, mode: "supabase" };
   }
 
+  if (action === "adjustPlanCredits") {
+    const plan = await adjustSupabaseCredits(homestayId, payload.delta, {
+      reason: payload.reason || "owner_credit_topup"
+    });
+    return { ok: true, data: plan, mode: "supabase" };
+  }
+
   if (action === "resetPlan") {
     const plan = await saveSupabasePlan({
       planType: "credit",
@@ -1352,6 +1426,14 @@ async function supabaseApiRequest(payload) {
       method: "POST",
       headers: { Prefer: "return=representation" },
       body: JSON.stringify(row)
+    }).catch(async error => {
+      if (!isSchemaColumnError(error) || !Object.prototype.hasOwnProperty.call(row, "discount_price")) throw error;
+      delete row.discount_price;
+      return supabaseRequest("rooms", {
+        method: "POST",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify(row)
+      });
     });
     return { ok: true, data: roomObjectFromRow(rows?.[0] || {}), mode: "supabase" };
   }
@@ -1366,6 +1448,14 @@ async function supabaseApiRequest(payload) {
       method: "PATCH",
       headers: { Prefer: "return=representation" },
       body: JSON.stringify(row)
+    }).catch(async error => {
+      if (!isSchemaColumnError(error) || !Object.prototype.hasOwnProperty.call(row, "discount_price")) throw error;
+      delete row.discount_price;
+      return supabaseRequest(`rooms?id=eq.${payload.id}&homestay_id=eq.${homestayId}`, {
+        method: "PATCH",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify(row)
+      });
     });
     return { ok: true, data: rows?.[0] ? roomObjectFromRow(rows[0]) : null, mode: "supabase" };
   }
@@ -1634,6 +1724,14 @@ async function localApiRequest(payload) {
     return { ok: true, data: plan, mode: "local" };
   }
 
+  if (payload.action === "adminAdjustHomestayCredits") {
+    const delta = Number(payload.delta || 0);
+    const nextCredits = Math.max(0, (typeof getCredits === "function" ? getCredits() : 0) + delta);
+    setPlan("credit", "");
+    setCredits(nextCredits);
+    return { ok: true, data: { plan_type: "credit", credits: nextCredits, status: "active" }, mode: "local" };
+  }
+
   if (payload.action === "adminUpdateOwnerPassword") {
     const slug = payload.homestayId || (typeof getCurrentHomestaySlug === "function" ? getCurrentHomestaySlug() : "homestay");
     const ownerPassword = normalizeOwnerPassword(payload.ownerPassword);
@@ -1661,6 +1759,14 @@ async function localApiRequest(payload) {
     setPlan(plan.planType || plan.plan_type || "credit", plan.planStartedAt || plan.plan_started_at || "");
     setCredits(Number(plan.credits || 0));
     return { ok: true, data: plan, mode: "local" };
+  }
+
+  if (payload.action === "adjustPlanCredits") {
+    const delta = Number(payload.delta || 0);
+    const nextCredits = Math.max(0, (typeof getCredits === "function" ? getCredits() : 0) + delta);
+    setPlan("credit", "");
+    setCredits(nextCredits);
+    return { ok: true, data: { plan_type: "credit", credits: nextCredits, status: "active" }, mode: "local" };
   }
 
   if (payload.action === "resetPlan") {
@@ -1727,7 +1833,9 @@ async function localApiRequest(payload) {
     };
     bookings.unshift(booking);
     localSaveBookings(bookings);
-    queueLineBookingNotification(booking, { slug: typeof getCurrentHomestaySlug === "function" ? getCurrentHomestaySlug() : "homestay" });
+    const localHomestay = { slug: typeof getCurrentHomestaySlug === "function" ? getCurrentHomestaySlug() : "homestay" };
+    queueLineBookingNotification(booking, localHomestay);
+    queueBookingEmailConfirmation(booking, localHomestay);
     return { ok: true, data: booking, mode: "local" };
   }
 
@@ -1822,6 +1930,7 @@ function normalizeRooms(rooms) {
       image: String(room.image || galleryImages[0] || "").trim(),
       galleryImages,
       price: Number(room.price || 0),
+      discountPrice: Math.max(0, Number(room.discountPrice ?? room.discount_price ?? 0)),
       closedUntil: String(room.closedUntil || "").trim(),
       active: room.active === true || room.active === "TRUE" || room.active === "true" || room.active === 1
     };

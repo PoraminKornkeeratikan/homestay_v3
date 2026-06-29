@@ -274,6 +274,8 @@ async function loadDashboard(silent = false) {
     renderBookingTable();
     renderPrepSections();
     autoVerifyPendingSlips();
+    renderCreditCard();
+    renderHeaderCredit();
   } catch (error) {
     console.error(error);
     if (typeof resetLocalPlanState === "function") {
@@ -796,11 +798,19 @@ function renderRoomTable() {
               <span>ห้องพัก</span>
               <input class="inline-input room-title-input" id="room-name-${room.id}" value="${escapeHtml(room.name)}" />
             </div>
+            <label class="room-owner-field price-field room-top-price-field">
+              <span>เธฃเธฒเธเธฒ / เธเธทเธ</span>
+              <input class="inline-input" type="number" id="room-price-${room.id}" value="${Number(room.price || 0)}" />
+            </label>
+            <label class="room-owner-field discount-field room-top-discount-field">
+              <span>&#3619;&#3634;&#3588;&#3634;&#3627;&#3621;&#3633;&#3591;&#3621;&#3604;</span>
+              <input class="inline-input" type="number" min="0" id="room-discount-price-${room.id}" value="${Number(room.discountPrice || 0) || ""}" placeholder="0" />
+            </label>
             <span class="status ${isOpen ? "confirmed" : "cancelled"}">${roomStatusText(room)}</span>
           </div>
 
           <div class="room-owner-fields">
-            <label class="room-owner-field price-field">
+            <label class="room-owner-field price-field old-price-field">
               <span>ราคา / คืน</span>
               <input class="inline-input" type="number" id="room-price-${room.id}" value="${Number(room.price || 0)}" />
             </label>
@@ -843,6 +853,7 @@ async function saveRoom(id) {
   const room = {
     name: document.getElementById(`room-name-${id}`).value.trim(),
     price: Number(document.getElementById(`room-price-${id}`).value || 0),
+    discountPrice: Number(document.getElementById(`room-discount-price-${id}`)?.value || 0),
     detail: document.getElementById(`room-detail-${id}`).value.trim()
   };
 
@@ -1899,10 +1910,14 @@ setInterval(async () => {
   if (approved.length) {
     for (const r of approved) {
       try {
+        r.status = "processing";
+        r.processingAt = new Date().toISOString();
+        saveTopupRequests(reqs);
         if (r.type === "yearly") {
           const start = new Date().toISOString();
           const expiry = new Date(start);
           expiry.setFullYear(expiry.getFullYear() + 1);
+          await loadDashboard(true);
           const result = await apiRequest({
             action: "updatePlan",
             plan: {
@@ -1916,22 +1931,21 @@ setInterval(async () => {
           if (!result.ok) throw new Error(result.message || "บันทึกแพ็กเกจรายปีไม่สำเร็จ");
           showToast(`✅ Admin อนุมัติแล้ว! เปิดใช้งานแพ็กเกจรายปีสำเร็จ`);
         } else {
-          const nextCredits = getCredits() + Number(r.credits || 0);
           const result = await apiRequest({
-            action: "updatePlan",
-            plan: {
-              planType: "credit",
-              credits: nextCredits,
-              status: "active"
-            }
+            action: "adjustPlanCredits",
+            delta: Number(r.credits || 0),
+            reason: "owner_topup_approved"
           });
           if (!result.ok) throw new Error(result.message || "บันทึกเครดิตไม่สำเร็จ");
           showToast(`✅ Admin อนุมัติแล้ว! ได้รับ ${r.credits} เครดิต`);
         }
         r.status = "done";
         r.doneAt = new Date().toISOString();
+        await loadDashboard(true);
       } catch (error) {
         console.error(error);
+        r.status = "approved";
+        delete r.processingAt;
         showToast("บันทึกเครดิตไม่สำเร็จ กรุณาลองใหม่");
       }
     }
@@ -1965,6 +1979,8 @@ loginBtn.addEventListener("click", async () => {
 });
 
 logoutBtn.addEventListener("click", () => {
+  if (_pollingTimer) clearInterval(_pollingTimer);
+  if (_dashboardRefreshTimer) clearInterval(_dashboardRefreshTimer);
   ownerPassword.value = "";
   ownerDashboard.classList.add("hidden");
   ownerLoginBox.classList.remove("hidden");
@@ -1977,6 +1993,7 @@ logoutBtn.addEventListener("click", () => {
 // เช็คทุก 10 วิ ว่ามีการจองใหม่หรืออัพเดทไหม โดยดึงแค่ record ล่าสุด 1 แถว
 let _pollingLastId = null;
 let _pollingTimer = null;
+let _dashboardRefreshTimer = null;
 
 async function _pollNewBookings() {
   try {
@@ -2009,9 +2026,20 @@ async function _pollNewBookings() {
 
 function startPolling() {
   if (_pollingTimer) clearInterval(_pollingTimer);
+  if (_dashboardRefreshTimer) clearInterval(_dashboardRefreshTimer);
   _pollingLastId = null;
   _pollNewBookings(); // เช็คทันทีครั้งแรก
   _pollingTimer = setInterval(_pollNewBookings, 10000); // ทุก 10 วิ
+  _dashboardRefreshTimer = setInterval(() => {
+    if (!ownerDashboard || ownerDashboard.classList.contains("hidden")) return;
+    if (document.hidden) return;
+    const active = document.activeElement;
+    const editingForm = active
+      && ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName)
+      && (settingsForm?.contains(active) || roomForm?.contains(active) || roomTable?.contains(active));
+    if (editingForm) return;
+    loadDashboard(true);
+  }, 15000);
 }
 // ────────────────────────────────────────────────────────────────
 refreshBtn.addEventListener("click", loadDashboard);

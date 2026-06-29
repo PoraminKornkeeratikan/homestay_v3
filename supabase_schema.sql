@@ -96,6 +96,7 @@ create table if not exists public.rooms (
   homestay_id uuid not null references public.homestays(id) on delete cascade,
   name text not null,
   price numeric(12,2) not null default 0,
+  discount_price numeric(12,2) not null default 0,
   detail text,
   image_url text,
   gallery_images jsonb not null default '[]'::jsonb,

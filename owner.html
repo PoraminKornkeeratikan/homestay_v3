@@ -591,7 +591,10 @@
     .settings-panel.visible, .rooms-panel.visible {
       position: fixed;
       inset: 0;
-      z-index: 90;
+      width: 100vw;
+      height: 100vh;
+      min-height: 100vh;
+      z-index: 9000;
       display: grid !important;
       place-items: center;
       align-items: center;
@@ -601,6 +604,15 @@
       background: rgba(15, 61, 46, 0.48);
       backdrop-filter: blur(10px);
       overflow: auto;
+      overscroll-behavior: contain;
+      box-shadow: 0 0 0 100vmax rgba(15, 61, 46, 0.48);
+    }
+    @supports (height: 100dvh) {
+      .settings-panel.visible,
+      .rooms-panel.visible {
+        height: 100dvh;
+        min-height: 100dvh;
+      }
     }
     #settingsPanel.visible {
       align-content: center;
@@ -608,23 +620,89 @@
     }
     .settings-panel.visible > .owner-card,
     .rooms-panel.visible > .owner-card {
+      position: relative;
       width: min(980px, 100%);
       max-height: calc(100vh - 40px);
       margin: auto;
       overflow: auto;
+      overscroll-behavior: contain;
     }
     #roomListPanel.visible {
       position: fixed;
-      inset: clamp(14px, 3vw, 28px);
-      z-index: 90;
+      inset: 0;
+      z-index: 9000;
       display: block !important;
-      width: min(1080px, calc(100% - 28px));
-      max-height: calc(100vh - 40px);
+      width: min(980px, calc(100vw - 16px));
+      height: auto;
+      max-height: calc(100vh - 16px);
       margin: auto;
       overflow: auto;
-      box-shadow: 0 30px 90px rgba(15, 61, 46, 0.26);
+      overscroll-behavior: contain;
+      border-radius: 18px;
+      box-shadow: 0 30px 90px rgba(15, 61, 46, 0.26), 0 0 0 100vmax rgba(15, 61, 46, 0.48);
+    }
+    @supports (height: 100dvh) {
+      #roomListPanel.visible {
+        max-height: calc(100dvh - 16px);
+      }
     }
     .panel-field-hidden { display: none !important; }
+
+    html.owner-panel-open {
+      overflow: hidden;
+    }
+
+    body.owner-panel-open {
+      position: fixed;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .settings-panel.visible .section-mini-head,
+    .rooms-panel.visible .section-mini-head,
+    #roomListPanel.visible .section-mini-head {
+      position: relative;
+      padding-right: 46px;
+    }
+
+    .settings-panel.visible .panel-close-btn,
+    .rooms-panel.visible .panel-close-btn,
+    #roomListPanel.visible .panel-close-btn {
+      position: absolute;
+      top: 0;
+      right: 0;
+      z-index: 2;
+    }
+
+    @media (max-width: 1024px) {
+      #settingsPanel.visible {
+        place-items: center;
+        align-items: center;
+        justify-items: center;
+        align-content: center;
+        justify-content: center;
+        padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+      }
+
+      #settingsPanel.visible > .owner-card {
+        width: min(430px, calc(100vw - 20px));
+        max-height: calc(100dvh - 24px);
+        margin: auto;
+        border-radius: 18px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      #settingsPanel.visible {
+        padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+      }
+
+      #settingsPanel.visible > .owner-card {
+        width: min(360px, calc(100vw - 16px));
+        max-height: calc(100dvh - 16px);
+        border-radius: 16px;
+      }
+    }
 
     /* ===== DAILY PREP CARD ===== */
     .prep-grid {
@@ -1100,7 +1178,7 @@
               <textarea id="settingPaymentNote" rows="4" placeholder="เช่น โอนแล้วส่งสลิปในระบบนี้ หรือแจ้งเวลาที่ต้องการให้ตรวจสอบ"></textarea>
             </div>
             <div class="field full owner-password-setting">
-              <label>Owner login password</label>
+              <label>ตั้งรหัสผ่านเข้าสู่ระบบ</label>
               <div class="owner-password-fields">
                 <input type="password" id="settingOwnerPassword" placeholder="New password" autocomplete="new-password" />
                 <input type="password" id="settingOwnerPasswordConfirm" placeholder="Confirm password" autocomplete="new-password" />
@@ -1108,48 +1186,40 @@
               </div>
               <small class="input-hint">Use this password on the Owner login page for this homestay.</small>
             </div>
-            <div class="field full owner-line-setting">
-              <label>Owner LINE_TO_ID</label>
-              <div class="owner-password-fields">
-                <input type="text" id="settingOwnerLineToId" placeholder="userId หรือ groupId สำหรับรับแจ้งเตือน" />
-                <button type="button" class="secondary-btn" id="saveOwnerLineToIdBtn">Save LINE_TO_ID</button>
-              </div>
-              <small class="input-hint">ใช้รับแจ้งเตือน LINE เมื่อมีลูกค้าจองโฮมสเตย์นี้</small>
-            </div>
             <div class="field full settings-subhead">
-              <h5>ตั้งค่าหน้า Hero</h5>
+              <h5>ตั้งค่าหน้าจอง</h5>
             </div>
             <div class="field">
-              <label>Hero pill</label>
+              <label>Page pill</label>
               <input type="text" id="settingHeroTextPill" />
             </div>
             <div class="field">
-              <label>Hero title</label>
+              <label>Page title</label>
               <input type="text" id="settingHeroTextTitle" />
             </div>
             <div class="field full">
-              <label>Hero description</label>
+              <label>Page description</label>
               <textarea id="settingHeroTextBody" rows="3"></textarea>
             </div>
             <div class="field full">
-              <label>Hero text image</label>
+              <label>Page text image</label>
               <input type="file" id="settingHeroTextImageFile" accept="image/*" />
               <small class="input-hint" id="settingHeroTextImageName">ยังไม่ได้เลือกรูป</small>
             </div>
             <div class="field">
-              <label>Hero card p</label>
+              <label>Page card p</label>
               <input type="text" id="settingHeroCardEyebrow" />
             </div>
             <div class="field">
-              <label>Hero card strong</label>
+              <label>Page card strong</label>
               <input type="text" id="settingHeroCardTitle" />
             </div>
             <div class="field">
-              <label>Hero card span</label>
+              <label>Page card span</label>
               <input type="text" id="settingHeroCardSubtitle" />
             </div>
             <div class="field full">
-              <label>Hero card image</label>
+              <label>Page card image</label>
               <input type="file" id="settingHeroCardImageFile" accept="image/*" />
               <small class="input-hint" id="settingHeroCardImageName">ยังไม่ได้เลือกรูป</small>
             </div>
@@ -1453,6 +1523,34 @@
       if (submitBtn) submitBtn.textContent = mode === 'page' ? 'บันทึกตั้งค่าเพจ' : 'บันทึกตั้งค่าบัญชี';
     }
 
+    let ownerPanelScrollY = 0;
+
+    function hasVisibleOwnerPanel() {
+      return ['settingsPanel', 'roomsPanel', 'roomListPanel'].some(id => {
+        const el = document.getElementById(id);
+        return el && el.classList.contains('visible');
+      });
+    }
+
+    function setOwnerPanelScrollLock(locked) {
+      const isLocked = document.body.classList.contains('owner-panel-open');
+      if (locked && !isLocked) {
+        ownerPanelScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+        document.documentElement.classList.add('owner-panel-open');
+        document.body.classList.add('owner-panel-open');
+        document.body.style.top = `-${ownerPanelScrollY}px`;
+      } else if (!locked && isLocked) {
+        document.documentElement.classList.remove('owner-panel-open');
+        document.body.classList.remove('owner-panel-open');
+        document.body.style.top = '';
+        window.scrollTo(0, ownerPanelScrollY || 0);
+      }
+    }
+
+    function syncOwnerPanelScrollLock() {
+      setOwnerPanelScrollLock(hasVisibleOwnerPanel());
+    }
+
     function showPanel(name, mode = 'account') {
       // close hamburger popup
       closeHamburgerPopup();
@@ -1479,6 +1577,7 @@
         settingsEl.classList.remove('visible');
         roomsEl.classList.remove('visible');
       }
+      syncOwnerPanelScrollLock();
     }
 
     function closeOwnerPanel(name) {
@@ -1489,6 +1588,7 @@
       if (name === 'settings') settingsEl.classList.remove('visible');
       if (name === 'rooms') roomsEl.classList.remove('visible');
       if (name === 'roomlist') roomListEl.classList.remove('visible');
+      syncOwnerPanelScrollLock();
     }
   </script>
 </body>

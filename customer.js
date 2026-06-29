@@ -287,6 +287,40 @@ function selectedRoom() {
   return activeRooms().find(room => room.id === selectedRoomId) || activeRooms()[0] || null;
 }
 
+function getRoomDiscountPrice(room = {}) {
+  const normalPrice = Number(room.price || 0);
+  const discountPrice = Math.max(0, Number(room.discountPrice ?? room.discount_price ?? 0));
+  return discountPrice > 0 && discountPrice < normalPrice ? discountPrice : 0;
+}
+
+function getRoomSalePrice(room = {}) {
+  return getRoomDiscountPrice(room) || Number(room.price || 0);
+}
+
+function getRoomDiscountPercent(room = {}) {
+  const normalPrice = Number(room.price || 0);
+  const discountPrice = getRoomDiscountPrice(room);
+  if (!normalPrice || !discountPrice) return 0;
+  return Math.max(1, Math.round(((normalPrice - discountPrice) / normalPrice) * 100));
+}
+
+function renderRoomPrice(room = {}) {
+  const discountPrice = getRoomDiscountPrice(room);
+  if (!discountPrice) {
+    return `<span class="price">${formatMoney(room.price)}</span>`;
+  }
+
+  return `
+    <div class="room-sale-price">
+      <div class="room-original-price">
+        <span>${formatMoney(room.price)}</span>
+        <b>-${getRoomDiscountPercent(room)}%</b>
+      </div>
+      <span class="price room-discount-price">${formatMoney(discountPrice)}</span>
+    </div>
+  `;
+}
+
 function isRoomOpenOnDate(room, dateKey) {
   if (!room) return false;
   if (room.active) return true;
@@ -358,7 +392,7 @@ function renderRooms() {
       ${renderImageBlock(room.image, room.name, "room-img")}
       <h4>${escapeHtml(room.name)}</h4>
       <div class="room-meta">
-        <span class="price">${formatMoney(room.price)}</span>
+        ${renderRoomPrice(room)}
         <div class="customer-room-actions">
           ${renderRoomDetail(room.detail || "ห้องพักของโฮมสเตย์", room.name, room.id)}
           <button type="button" class="book-room-btn" onclick="selectRoom('${room.id}')">จองห้องนี้</button>
@@ -374,7 +408,7 @@ function selectRoom(roomId) {
   selectedRoomId = roomId;
   roomType.value = roomId;
   const room = selectedRoom();
-  selectedRoomNameText.textContent = room ? `${room.name} • ${formatMoney(room.price)} / คืน` : "-";
+  selectedRoomNameText.textContent = room ? `${room.name} • ${formatMoney(getRoomSalePrice(room))} / คืน` : "-";
 
   bookingPanel.classList.remove("hidden");
   resetSelectedDates();
@@ -808,7 +842,7 @@ async function copyBankAccount() {
 function getSummary() {
   const room = selectedRoom() || { price: 0, name: "" };
   const nights = dateDiffNights(checkIn.value, checkOut.value);
-  const roomTotal = Number(room.price || 0) * nights;
+  const roomTotal = getRoomSalePrice(room) * nights;
 
   const addonItems = getSelectedAddonItems();
   const selectedMookata = addonItems.find(item => item.id === "mookata");
@@ -913,7 +947,7 @@ async function buildBookingObject() {
     email,
     roomId: summary.room.id,
     roomName: summary.room.name,
-    roomPrice: Number(summary.room.price || 0),
+    roomPrice: getRoomSalePrice(summary.room),
     checkIn: checkIn.value,
     checkOut: checkOut.value,
     nights: summary.nights,

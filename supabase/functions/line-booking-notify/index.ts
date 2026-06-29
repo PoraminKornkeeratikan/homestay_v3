@@ -35,6 +35,49 @@ function dateText(value: unknown) {
     : date.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
 }
 
+function getSlipImageUrl(booking: Record<string, unknown>) {
+  const slipUrl = text(booking.slipUrl || booking.slip_url, "");
+  if (!/^https:\/\//i.test(slipUrl)) return "";
+  return slipUrl;
+}
+
+function checkIcon(check: unknown) {
+  return (check as Record<string, unknown> | undefined)?.ok === true ? "✅" : "❌";
+}
+
+function hasCheck(checks: Record<string, unknown>, key: string) {
+  return Boolean(checks && typeof checks === "object" && checks[key]);
+}
+
+function buildSlipCheckMessage(booking: Record<string, unknown>) {
+  const status = text(booking.slipVerifyStatus || booking.slip_verify_status, "not_checked");
+  const checks = (booking.slipVerifyChecks || booking.slip_verify_checks || {}) as Record<string, unknown>;
+
+  if (status === "not_checked" || !Object.keys(checks).length) {
+    return "ผลตรวจสลิป: รอตรวจสอบ";
+  }
+
+  if (status === "error") {
+    const message = text(booking.slipVerifyMessage || booking.slip_verify_message, "");
+    return ["ผลตรวจสลิป: ตรวจไม่ได้", message].filter(Boolean).join("\n");
+  }
+
+  const lines = [
+    "ผลตรวจสลิป",
+    hasCheck(checks, "accountNumber") ? `เลขบัญชี/พร้อมเพย์ ${checkIcon(checks.accountNumber)}` : "",
+    hasCheck(checks, "accountName") ? `ชื่อบัญชี ${checkIcon(checks.accountName)}` : "",
+    hasCheck(checks, "transferTime") ? `เวลา ${checkIcon(checks.transferTime)}` : "",
+    hasCheck(checks, "amount") ? `จำนวนเงิน ${checkIcon(checks.amount)}` : ""
+  ];
+
+  const duplicate = checks.duplicate as Record<string, unknown> | undefined;
+  if (duplicate?.ok === false) {
+    lines.push(`สลิปซ้ำ ${checkIcon(duplicate)}`);
+  }
+
+  return lines.filter(Boolean).join("\n");
+}
+
 function buildBookingMessage(booking: Record<string, unknown>, homestay: Record<string, unknown>) {
   const homestayName = text(homestay.name || homestay.slug, "Homestay");
   const code = text(booking.bookingCode || booking.booking_code || booking.id);
@@ -59,6 +102,7 @@ function buildBookingMessage(booking: Record<string, unknown>, homestay: Record<
     `ยอดรวม: ${total}`,
     `ชำระเงิน: ${payment}`,
     `สถานะ: ${status}`,
+    buildSlipCheckMessage(booking),
     note ? `หมายเหตุ: ${note}` : ""
   ].filter(Boolean).join("\n");
 }
@@ -86,6 +130,16 @@ Deno.serve(async req => {
     }
 
     const message = buildBookingMessage(booking, homestay);
+    const slipImageUrl = getSlipImageUrl(booking);
+    const messages: Record<string, unknown>[] = [{ type: "text", text: message }];
+
+    if (slipImageUrl) {
+      messages.push({
+        type: "image",
+        originalContentUrl: slipImageUrl,
+        previewImageUrl: slipImageUrl
+      });
+    }
 
     const lineResponse = await fetch("https://api.line.me/v2/bot/message/push", {
       method: "POST",
@@ -95,7 +149,7 @@ Deno.serve(async req => {
       },
       body: JSON.stringify({
         to: targetLineId,
-        messages: [{ type: "text", text: message }]
+        messages
       })
     });
 
