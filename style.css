@@ -6239,6 +6239,18 @@ body.modal-open {
   border-radius: 18px;
 }
 
+@media (min-width: 1025px) {
+  .room-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .room-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 640px) {
   .room-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
