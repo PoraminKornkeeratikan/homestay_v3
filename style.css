@@ -6241,7 +6241,7 @@ body.modal-open {
 
 @media (min-width: 1025px) {
   .room-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -6288,5 +6288,31 @@ body.modal-open {
     min-height: 34px;
     padding: 7px 8px;
     font-size: 11px;
+  }
+}
+
+.room-grid .room-card {
+  min-width: 0;
+}
+
+.room-grid .room-meta {
+  min-width: 0;
+}
+
+.room-grid .customer-room-actions {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.room-grid .customer-room-actions button {
+  min-width: 0;
+  flex: 1 1 120px;
+}
+
+@media (max-width: 640px) {
+  .room-grid .customer-room-actions button,
+  .room-grid .room-card button {
+    width: 100%;
+    flex-basis: auto;
   }
 }
