@@ -461,6 +461,67 @@ async function handleInlinePrecheck(body: Record<string, unknown>) {
   });
 }
 
+async function handleTopupPrecheck(body: Record<string, unknown>) {
+  const topup = (body.topupRequest || {}) as Record<string, unknown>;
+  const receiver = (body.receiver || {}) as Record<string, unknown>;
+  const slipBase64 = String(topup.slipBase64 || body.slipBase64 || "").trim();
+  const price = Number(topup.price || body.price || 0);
+
+  if (!slipBase64) {
+    return jsonResponse({ ok: false, message: "ไม่พบสลิปเติมเครดิต" }, 400);
+  }
+
+  if (!price) {
+    return jsonResponse({ ok: false, message: "ไม่พบยอดชำระของคำขอเติมเครดิต" }, 400);
+  }
+
+  const settings = {
+    bank_account_name: String(
+      receiver.bankAccountName
+      || receiver.bank_account_name
+      || topup.receiverName
+      || ""
+    ),
+    bank_account_number: String(
+      receiver.bankAccountNumber
+      || receiver.bank_account_number
+      || ""
+    ),
+    promptpay_id: String(
+      receiver.promptPayId
+      || receiver.promptpay_id
+      || topup.receiverPromptPay
+      || ""
+    )
+  };
+
+  const bookingForCheck = {
+    booking_code: String(topup.id || "topup-request").trim(),
+    grand_total: price,
+    bank_account_name: settings.bank_account_name,
+    bank_account_number: settings.bank_account_number,
+    promptpay_id: settings.promptpay_id,
+    created_at: String(topup.requestedAt || new Date().toISOString())
+  };
+
+  const easySlipResult = await verifyWithEasySlip(
+    slipBase64,
+    price,
+    String(bookingForCheck.booking_code || "topup-request")
+  );
+
+  if (!easySlipResult.ok || easySlipResult.data?.success === false) {
+    const message = easySlipResult.data?.error?.message || "EasySlip ตรวจสลิปไม่สำเร็จ";
+    return jsonResponse({ ok: false, message, data: easySlipResult.data || null }, 400);
+  }
+
+  const decision = buildDecision(bookingForCheck, settings, easySlipResult.data);
+  return jsonResponse({
+    ok: true,
+    data: buildClientDataFromDecision(decision, easySlipResult.data)
+  });
+}
+
 
 async function deductCreditsForBooking(homestayId: string, bookingId: string) {
   const [planRows, settingsRows] = await Promise.all([
@@ -563,12 +624,17 @@ Deno.serve(async request => {
     const body = await request.json().catch(() => ({})) as Record<string, unknown>;
     const bookingId = String(body.bookingId || "").trim();
     const homestaySlug = String(body.homestaySlug || "").trim();
+    const verifyType = String(body.type || body.verifyType || "").trim();
     const hasInlinePayload = Boolean(
       homestaySlug
       && String(body.slipBase64 || "").trim()
       && body.booking
       && typeof body.booking === "object"
     );
+
+    if (verifyType === "topup" || body.topupRequest) {
+      return await handleTopupPrecheck(body);
+    }
 
     if (hasInlinePayload && !bookingId) {
       return await handleInlinePrecheck(body);

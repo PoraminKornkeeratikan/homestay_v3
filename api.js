@@ -765,10 +765,25 @@ function getLogoUrl(settings = {}) {
   return String(settings.logoUrl?.value || DEFAULT_SETTINGS.logoUrl?.value || "default-home-logo.svg").trim() || "default-home-logo.svg";
 }
 
+function getCustomerPageUrl(slug = getCurrentHomestaySlug()) {
+  return `customer.html?homestay=${encodeURIComponent(String(slug || "").trim())}`;
+}
+
+function syncOwnerCustomerLinks() {
+  if (document.body?.dataset?.pageTitleSuffix !== "Owner") return;
+
+  const customerUrl = getCustomerPageUrl();
+  document.querySelectorAll('header.topbar .brand[href^="customer.html"]').forEach(link => {
+    link.href = customerUrl;
+  });
+}
+
 function applyBrandAssets(settings = {}, pageSuffix = "") {
   const siteName = getSiteName(settings);
   const logoUrl = getLogoUrl(settings);
   const suffix = String(pageSuffix || document.body?.dataset?.pageTitleSuffix || "").trim();
+
+  syncOwnerCustomerLinks();
 
   document.querySelectorAll("img.site-logo, img.logo").forEach(img => {
     img.src = logoUrl;
@@ -1126,6 +1141,18 @@ function queueLineBookingNotification(booking = {}, homestay = {}) {
   });
 }
 
+function queueTopupLineNotification(topupRequest = {}) {
+  if (!topupRequest?.id || !isSupabaseReady) return;
+  const functionName = String(typeof LINE_BOOKING_NOTIFY_FUNCTION_NAME !== "undefined"
+    ? LINE_BOOKING_NOTIFY_FUNCTION_NAME
+    : "line-booking-notify").trim() || "line-booking-notify";
+  supabaseFunctionRequest(functionName, {
+    topupRequest
+  }).catch(error => {
+    console.warn("LINE topup notification skipped:", error?.message || error);
+  });
+}
+
 function queueBookingEmailConfirmation(booking = {}, homestay = {}) {
   const email = String(booking.email || booking.guest_email || "").trim();
   if (!email || !isSupabaseReady) return;
@@ -1232,6 +1259,25 @@ async function supabaseApiRequest(payload) {
   if (action === "adminUpdateGlobalBookingConfig") {
     const settings = await updateSupabaseGlobalBookingConfig(payload.settings || {});
     return { ok: true, data: settings, mode: "supabase" };
+  }
+
+  if (action === "precheckTopupSlip") {
+    try {
+      const receiverSettings = payload.receiver || (typeof TOPUP_PAYMENT_SETTINGS !== "undefined" ? TOPUP_PAYMENT_SETTINGS : {});
+      const result = await supabaseFunctionRequest("verify-slip", {
+        type: "topup",
+        topupRequest: payload.topupRequest || {},
+        receiver: {
+          bankAccountName: receiverSettings.bankAccountName?.value || receiverSettings.bankAccountName || "",
+          bankAccountNumber: receiverSettings.bankAccountNumber?.value || receiverSettings.bankAccountNumber || "",
+          promptPayId: receiverSettings.promptPayId?.value || receiverSettings.promptPayId || ""
+        }
+      });
+      return { ok: true, data: result.data || null, mode: "supabase" };
+    } catch (error) {
+      console.warn("precheckTopupSlip failed:", error?.message);
+      return { ok: false, message: error?.message || "Topup slip verification failed", mode: "supabase" };
+    }
   }
 
   if (action === "adminUpdateHomestayPlan") {
@@ -1866,6 +1912,13 @@ async function localApiRequest(payload) {
     return {
       ok: false,
       message: "การตรวจสลิปอัตโนมัติใช้ได้เมื่อเชื่อม Supabase และ Edge Function แล้วเท่านั้น"
+    };
+  }
+
+  if (payload.action === "precheckTopupSlip") {
+    return {
+      ok: false,
+      message: "ตรวจสลิปเติมเครดิตอัตโนมัติใช้ได้เมื่อเชื่อม Supabase และ Edge Function แล้ว"
     };
   }
 

@@ -386,6 +386,7 @@
     const topupHistorySearch = document.getElementById("topupHistorySearch");
     const topupHistoryList = document.getElementById("topupHistoryList");
     let adminHomestays = [];
+    let topupAutoVerifyRunning = false;
 
     function renderCoPkgGrid() {
       const grid = document.getElementById('coPkgGrid');
@@ -858,6 +859,7 @@
       renderPendingRequests();
       renderTopupHistory();
       renderCoPkgGrid();
+      autoVerifyPendingTopups();
     }
 
     async function refreshAllAdminData() {
@@ -886,7 +888,10 @@
 
     function formatTopupStatusLabel(status) {
       if (status === "pending") return "รออนุมัติ";
+      if (status === "verifying") return "กำลังตรวจสลิป";
+      if (status === "verification_failed") return "รอตรวจสอบสลิป";
       if (status === "approved") return "อนุมัติแล้ว";
+      if (status === "processing") return "กำลังเติมเครดิต";
       if (status === "done") return "สำเร็จแล้ว";
       if (status === "rejected") return "ปฏิเสธ";
       return status || "-";
@@ -959,6 +964,8 @@
         req.label,
         req.slipFilename,
         req.status,
+        req.slipVerifyStatus,
+        req.slipVerifyMessage,
         req.type,
         req.credits,
         req.price
@@ -983,6 +990,9 @@
         const approvedAt = req.approvedAt ? formatTopupDate(req.approvedAt) : "-";
         const doneAt = req.doneAt ? formatTopupDate(req.doneAt) : "-";
         const rejectedAt = req.rejectedAt ? `<div><span>ปฏิเสธ:</span><strong>${formatTopupDate(req.rejectedAt)}</strong></div>` : "";
+        const verifyAt = req.slipVerifiedAt ? formatTopupDate(req.slipVerifiedAt) : "-";
+        const verifyStatus = req.slipVerifyStatus || "-";
+        const verifyMessage = req.slipVerifyMessage || "-";
         const slipActionsHtml = req.slipBase64
           ? `<div class="topup-history-actions">
               <button type="button" class="history-slip-btn" onclick="openTopupHistorySlip('${req.id}')">ดูสลิป</button>
@@ -1005,6 +1015,9 @@
               <div><span>อนุมัติ:</span><strong>${escapeHtml(approvedAt)}</strong></div>
               <div><span>สำเร็จ:</span><strong>${escapeHtml(doneAt)}</strong></div>
               ${rejectedAt}
+              <div><span>ตรวจสลิป:</span><strong>${escapeHtml(verifyStatus)}</strong></div>
+              <div><span>เวลาตรวจ:</span><strong>${escapeHtml(verifyAt)}</strong></div>
+              <div><span>ผลตรวจ:</span><strong>${escapeHtml(verifyMessage)}</strong></div>
               <div><span>ไฟล์:</span><strong>${escapeHtml(req.slipFilename || "-")}</strong></div>
             </div>
             <div class="topup-history-slip-tools">
@@ -1064,12 +1077,171 @@
       document.body.classList.remove("modal-open");
     }
 
+    function getAdminHomestayForTopup(req = {}) {
+      const slug = getTopupHomestaySlug(req).toLowerCase();
+      const name = getTopupHomestayName(req).toLowerCase();
+      return adminHomestays.find(item => {
+        const itemSlug = String(item.slug || "").toLowerCase();
+        const itemName = String(item.name || "").toLowerCase();
+        return (slug && itemSlug === slug) || (name && itemName === name);
+      }) || null;
+    }
+
+    async function applyApprovedTopupRequest(req) {
+      const homestay = getAdminHomestayForTopup(req);
+      if (!homestay?.id) throw new Error("ไม่พบโฮมสเตย์ของคำขอนี้");
+
+      if (req.type === "yearly") {
+        const start = new Date().toISOString();
+        const result = await apiRequest({
+          action: "adminUpdateHomestayPlan",
+          homestayId: homestay.id,
+          plan: {
+            planType: "yearly",
+            credits: Number(homestay.credits ?? homestay.plan?.credits ?? 0),
+            planStartedAt: start,
+            planExpiresAt: getYearlyExpiry(start),
+            status: "active"
+          }
+        });
+        if (!result.ok) throw new Error(result.message || "เปิดแพ็กเกจรายปีไม่สำเร็จ");
+      } else {
+        const result = await apiRequest({
+          action: "adminAdjustHomestayCredits",
+          homestayId: homestay.id,
+          delta: Number(req.credits || 0)
+        });
+        if (!result.ok) throw new Error(result.message || "เติมเครดิตไม่สำเร็จ");
+      }
+    }
+
+    function saveTopupRequestPatch(id, patch) {
+      const reqs = getTopupRequests();
+      const req = reqs.find(item => item.id === id);
+      if (!req) return null;
+      Object.assign(req, patch);
+      saveTopupRequests(reqs);
+      return req;
+    }
+
+    function notifyTopupLine(req) {
+      if (typeof queueTopupLineNotification === "function") {
+        queueTopupLineNotification(req);
+      }
+    }
+
+    async function approveRequest(id, options = {}) {
+      let req = saveTopupRequestPatch(id, {
+        status: "approved",
+        approvedAt: new Date().toISOString(),
+        approvedBy: options.auto ? "auto-slip-check" : "admin"
+      });
+      if (!req) return;
+
+      renderPendingRequests();
+      renderTopupHistory();
+
+      try {
+        req = saveTopupRequestPatch(id, {
+          status: "processing",
+          processingAt: new Date().toISOString()
+        }) || req;
+        renderPendingRequests();
+        renderTopupHistory();
+
+        await applyApprovedTopupRequest(req);
+        req = saveTopupRequestPatch(id, {
+          status: "done",
+          doneAt: new Date().toISOString()
+        }) || req;
+        notifyTopupLine(req);
+        await loadAdminHomestays();
+        const desc = req.type === "yearly" ? "แพ็กเกจรายปี" : `${req.credits} เครดิต`;
+        showToast(options.auto ? `ตรวจสลิปผ่านและเติม ${desc} อัตโนมัติแล้ว` : `อนุมัติและเติม ${desc} แล้ว`);
+      } catch (error) {
+        console.error(error);
+        req = saveTopupRequestPatch(id, {
+          status: "approved",
+          applyError: error.message || "เติมเครดิตไม่สำเร็จ"
+        }) || req;
+        notifyTopupLine(req);
+        showToast(`อนุมัติแล้ว แต่เติมเครดิตไม่สำเร็จ: ${error.message || "ไม่ทราบสาเหตุ"}`);
+      } finally {
+        renderPendingRequests();
+        renderTopupHistory();
+        renderCurrentStatus();
+      }
+    }
+
+    async function verifyTopupRequest(id) {
+      const req = saveTopupRequestPatch(id, {
+        status: "verifying",
+        slipVerifyStatus: "checking",
+        slipVerifyMessage: "กำลังตรวจสลิป",
+        slipVerifyStartedAt: new Date().toISOString()
+      });
+      if (!req?.slipBase64) return;
+
+      renderPendingRequests();
+      renderTopupHistory();
+
+      const result = await apiRequest({
+        action: "precheckTopupSlip",
+        topupRequest: req,
+        receiver: typeof TOPUP_PAYMENT_SETTINGS !== "undefined" ? TOPUP_PAYMENT_SETTINGS : {}
+      });
+      const data = result.data || {};
+      const patch = {
+        slipVerifyStatus: data.slipVerifyStatus || (data.passed ? "passed" : "failed"),
+        slipVerifyMessage: data.slipVerifyMessage || data.message || result.message || "",
+        slipVerifiedAt: data.slipVerifiedAt || new Date().toISOString(),
+        slipTransferAmount: data.slipTransferAmount || 0,
+        slipTransferRef: data.slipTransferRef || "",
+        slipVerifyChecks: data.slipVerifyChecks || null,
+        slipRawResult: data.slipRawResult || null
+      };
+
+      if (result.ok && data.passed === true) {
+        saveTopupRequestPatch(id, patch);
+        await approveRequest(id, { auto: true });
+        return;
+      }
+
+      const failedReq = saveTopupRequestPatch(id, {
+        ...patch,
+        status: "verification_failed"
+      });
+      notifyTopupLine(failedReq);
+      renderPendingRequests();
+      renderTopupHistory();
+    }
+
+    async function autoVerifyPendingTopups() {
+      if (topupAutoVerifyRunning) return;
+      topupAutoVerifyRunning = true;
+      try {
+        const reqs = getTopupRequests()
+          .filter(req =>
+            req.slipBase64
+            && (req.status === "pending" || req.status === "verification_failed")
+            && req.slipVerifyStatus !== "passed"
+            && !req.slipVerifyStartedAt
+          );
+
+        for (const req of reqs) {
+          await verifyTopupRequest(req.id);
+        }
+      } finally {
+        topupAutoVerifyRunning = false;
+      }
+    }
+
     function renderPendingRequests() {
       const reqs = getTopupRequests();
       const list = document.getElementById("pendingRequestsList");
       if (!list) return;
 
-      const pending = reqs.filter(r => r.status === "pending");
+      const pending = reqs.filter(r => ["pending", "verifying", "verification_failed", "approved", "processing"].includes(r.status));
       if (!pending.length) {
         list.innerHTML = `<div class="empty">ไม่มีคำขอที่รอดำเนินการ</div>`;
         return;
@@ -1078,14 +1250,17 @@
       list.innerHTML = pending.slice().reverse().map(req => {
         const date = new Date(req.requestedAt).toLocaleString("th-TH");
         const homestayLabel = formatTopupHomestayLabel(req);
-        const statusLabel = req.status === "pending" ? "🟡 รอการอนุมัติ" : req.status === "approved" ? "✅ อนุมัติแล้ว" : "❌ ปฏิเสธ";
+        const statusLabel = formatTopupStatusLabel(req.status);
+        const verifyText = req.slipVerifyMessage
+          ? `<span>ผลตรวจสลิป: <strong>${escapeHtml(req.slipVerifyMessage)}</strong></span>`
+          : "";
         const slipHtml = req.slipBase64
           ? `<div class="request-slip">
                <img src="data:${req.slipMime};base64,${req.slipBase64}" alt="สลิป"
                     onclick="this.style.maxHeight=this.style.maxHeight==='none'?'160px':'none'" title="คลิกเพื่อขยาย" />
              </div>`
           : `<div class="request-slip" style="color:#9ca3af;font-size:.85rem">ไม่มีสลิป</div>`;
-        const actions = req.status === "pending"
+        const actions = req.status === "pending" || req.status === "verification_failed"
           ? `<div class="request-actions">
                <button class="approve-btn" onclick="approveRequest('${req.id}')">✅ อนุมัติ ${req.type === 'yearly' ? 'รายปี' : req.credits + ' เครดิต'}</button>
                <button class="reject-btn"  onclick="rejectRequest('${req.id}')">❌ ปฏิเสธ</button>
@@ -1098,25 +1273,13 @@
             <span>โฮมสเตย์: <strong>${escapeHtml(homestayLabel)}</strong></span>
             <span>แพ็กเกจ: <strong>${req.label} (${req.type === 'yearly' ? 'รายปี' : req.credits + ' เครดิต'} / ฿${req.price.toLocaleString()})</strong></span>
             <span>วันที่: <strong>${date}</strong></span>
+            <span>สถานะ: <strong>${escapeHtml(statusLabel)}</strong></span>
+            ${verifyText}
           </div>
           ${slipHtml}
           ${actions}
         </div>`;
       }).join("");
-    }
-
-    function approveRequest(id) {
-      const reqs = getTopupRequests();
-      const req = reqs.find(r => r.id === id);
-      if (!req) return;
-      req.status = "approved";
-      req.approvedAt = new Date().toISOString();
-      saveTopupRequests(reqs);
-      const desc = req.type === "yearly" ? "แพ็กเกจรายปี" : req.credits + " เครดิต";
-      showToast(`✅ อนุมัติ ${desc} ให้ Owner แล้ว`);
-      renderPendingRequests();
-      renderTopupHistory();
-      renderCurrentStatus();
     }
 
     function rejectRequest(id) {
@@ -1142,6 +1305,7 @@
         if (!editingHomestayList) loadAdminHomestays();
         renderPendingRequests();
         renderTopupHistory();
+        autoVerifyPendingTopups();
       }
     }, 15000);
 
