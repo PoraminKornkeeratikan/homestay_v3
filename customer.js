@@ -25,7 +25,6 @@ const calendarMonthText = document.getElementById("calendarMonthText");
 const calendarGrid = document.getElementById("calendarGrid");
 
 const addonGrid = document.getElementById("addonGrid");
-
 const roomTotalText = document.getElementById("roomTotalText");
 const addonTotalText = document.getElementById("addonTotalText");
 const grandTotalText = document.getElementById("grandTotalText");
