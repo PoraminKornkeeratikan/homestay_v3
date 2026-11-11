@@ -64,11 +64,10 @@ const backToEditBtn = document.getElementById("backToEditBtn");
 const bookingSuccessModal = document.getElementById("bookingSuccessModal");
 const successBookingCode = document.getElementById("successBookingCode");
 const copyBookingCodeBtn = document.getElementById("copyBookingCodeBtn");
-const sendBookingCodeBtn = document.getElementById("sendBookingCodeBtn");
 let completedBookingCode = "";
 
 const historyForm = document.getElementById("historyForm");
-const historyBookingCode = document.getElementById("historyBookingCode");
+const historySearchQuery = document.getElementById("historySearchQuery");
 const historyResult = document.getElementById("historyResult");
 
 function formatMultiline(value) {
@@ -759,15 +758,6 @@ async function copyCompletedBookingCode(showMessage = true) {
 function showBookingSuccess(bookingCode) {
   completedBookingCode = String(bookingCode || "").trim();
   if (successBookingCode) successBookingCode.textContent = completedBookingCode || "-";
-
-  const facebookUrl = String(settings.pageUrl?.value || "").trim();
-  if (sendBookingCodeBtn) {
-    sendBookingCodeBtn.dataset.facebookUrl = facebookUrl;
-    sendBookingCodeBtn.disabled = !facebookUrl;
-    sendBookingCodeBtn.innerHTML = facebookUrl
-      ? "ส่งหมายเลขจองเปิด Facebook"
-      : `<span class="booking-action-text"><strong>ยังส่งไม่ได้</strong><small>บ้านพักยังไม่ได้ตั้งลิงก์ Facebook</small></span>`;
-  }
   bookingSuccessModal?.classList.remove("hidden");
   document.body.classList.add("booking-success-open");
 }
@@ -1254,71 +1244,67 @@ async function confirmSendBooking() {
   }
 }
 
-function renderHistoryResult(booking) {
-  if (!booking) {
+function normalizeHistoryText(value) {
+  return String(value || "").trim().toLocaleLowerCase("th-TH").replace(/\s+/g, " ");
+}
+
+function normalizeHistoryPhone(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function findBookingHistory(query) {
+  const textQuery = normalizeHistoryText(query);
+  const phoneQuery = normalizeHistoryPhone(query);
+  const isEmailQuery = textQuery.includes("@");
+  const isPhoneQuery = phoneQuery.length >= 6 && /^[\d\s()+-]+$/.test(String(query || "").trim());
+
+  return bookings.filter(booking => {
+    if (isEmailQuery) return normalizeHistoryText(booking.email) === textQuery;
+    if (isPhoneQuery) return normalizeHistoryPhone(booking.phone) === phoneQuery;
+    return normalizeHistoryText(booking.name) === textQuery;
+  });
+}
+
+function renderHistoryResult(matches) {
+  const results = Array.isArray(matches) ? matches : [];
+
+  if (!results.length) {
     historyResult.classList.remove("hidden");
-    historyResult.innerHTML = `<div class="empty">ไม่พบรายการจอง กรุณาตรวจเลขรายการจองอีกครั้ง</div>`;
+    historyResult.innerHTML = `<div class="empty">ไม่พบรายการจอง กรุณาตรวจเบอร์โทร อีเมล หรือชื่อผู้จองอีกครั้ง</div>`;
     return;
   }
 
-  const addonText = formatAddonItems(getBookingAddonItems(booking));
-
   historyResult.classList.remove("hidden");
   historyResult.innerHTML = `
-    <div class="history-card">
-      <div>
-        <span>เลขรายการจอง</span>
-        <strong>${escapeHtml(booking.bookingCode || booking.id)}</strong>
-      </div>
-      <div>
-        <span>ผู้จอง</span>
-        <strong>${escapeHtml(booking.name || "-")}</strong>
-      </div>
-      <div>
-        <span>ห้องพัก</span>
-        <strong>${escapeHtml(booking.roomName || "-")}</strong>
-      </div>
-      <div>
-        <span>วันที่พัก</span>
-        <strong>${escapeHtml(formatThaiDate(booking.checkIn))} → ${escapeHtml(formatThaiDate(booking.checkOut))}</strong>
-      </div>
-      <div>
-        <span>บริการเสริม</span>
-        <strong>${escapeHtml(addonText)}</strong>
-      </div>
-      <div>
-        <span>ยอดชำระ</span>
-        <strong>${formatMoney(booking.grandTotal || 0)}</strong>
-      </div>
-      <div>
-        <span>สถานะ</span>
-        <strong>${escapeHtml(booking.status || "-")}</strong>
-      </div>
-      <div>
-        <span>สถานะชำระเงิน</span>
-        <strong>${escapeHtml(booking.paymentStatus || "-")}</strong>
-      </div>
-    </div>
+    <p class="history-result-count">พบ ${results.length} รายการจอง</p>
+    ${results.map(booking => {
+      const addonText = formatAddonItems(getBookingAddonItems(booking));
+      return `
+        <div class="history-card">
+          <div><span>เลขรายการจอง</span><strong>${escapeHtml(booking.bookingCode || booking.id)}</strong></div>
+          <div><span>ผู้จอง</span><strong>${escapeHtml(booking.name || "-")}</strong></div>
+          <div><span>ห้องพัก</span><strong>${escapeHtml(booking.roomName || "-")}</strong></div>
+          <div><span>วันที่พัก</span><strong>${escapeHtml(formatThaiDate(booking.checkIn))} → ${escapeHtml(formatThaiDate(booking.checkOut))}</strong></div>
+          <div><span>บริการเสริม</span><strong>${escapeHtml(addonText)}</strong></div>
+          <div><span>ยอดชำระ</span><strong>${formatMoney(booking.grandTotal || 0)}</strong></div>
+          <div><span>สถานะ</span><strong>${escapeHtml(booking.status || "-")}</strong></div>
+          <div><span>สถานะชำระเงิน</span><strong>${escapeHtml(booking.paymentStatus || "-")}</strong></div>
+        </div>
+      `;
+    }).join("")}
   `;
 }
 
 async function lookupBooking(event) {
   event.preventDefault();
-  const code = historyBookingCode.value.trim();
+  const query = historySearchQuery.value.trim();
 
-  if (!code) {
-    showToast("กรุณากรอกเลขรายการจอง");
+  if (query.length < 3) {
+    showToast("กรุณากรอกข้อมูลค้นหาอย่างน้อย 3 ตัวอักษร");
     return;
   }
 
-  try {
-    const result = await apiRequest({ action: "lookupBooking", bookingCode: code });
-    if (!result.ok) throw new Error(result.message || "ค้นหาไม่สำเร็จ");
-    renderHistoryResult(result.data || null);
-  } catch (error) {
-    console.error(error);
-    showToast("ค้นหาไม่สำเร็จ");
-  }
+  renderHistoryResult(findBookingHistory(query));
 }
 
 addonGrid?.addEventListener("change", event => {
@@ -1397,18 +1383,6 @@ backToEditBtn.addEventListener("click", () => {
   showToast("กลับไปแก้ข้อมูลได้เลย");
 });
 copyBookingCodeBtn?.addEventListener("click", () => copyCompletedBookingCode());
-sendBookingCodeBtn?.addEventListener("click", () => {
-  const facebookUrl = String(sendBookingCodeBtn.dataset.facebookUrl || "").trim();
-  if (!facebookUrl) {
-    showToast("บ้านพักยังไม่ได้ตั้งลิงก์ Facebook กรุณาติดต่อบ้านพักโดยตรง");
-    return;
-  }
-  copyCompletedBookingCode(false);
-  window.open(facebookUrl, "_blank", "noopener");
-  showToast(`คัดลอกเลขจอง ${completedBookingCode} แล้ว กรุณาวางในข้อความถึงเพจ`);
-  bookingSuccessModal?.classList.add("hidden");
-  document.body.classList.remove("booking-success-open");
-});
 
 historyForm.addEventListener("submit", lookupBooking);
 

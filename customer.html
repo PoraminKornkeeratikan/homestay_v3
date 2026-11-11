@@ -61,12 +61,12 @@
       <div class="section-head">
         <div>
           <h3>เช็คประวัติการจอง</h3>
-          <p>กรอกเลขรายการจองเพื่อดูข้อมูลการจองของคุณ</p>
+          <p>กรอกเบอร์โทร อีเมล หรือชื่อผู้จองที่ใช้ตอนจอง</p>
         </div>
       </div>
 
       <form id="historyForm" class="history-form">
-        <input type="text" id="historyBookingCode" placeholder="เช่น GS20260623-1234" required />
+        <input type="search" id="historySearchQuery" aria-label="ค้นหาประวัติการจอง" placeholder="เบอร์โทร อีเมล หรือชื่อผู้จอง" autocomplete="off" required />
         <button type="submit">ค้นหา</button>
       </form>
 
@@ -289,14 +289,11 @@
       <span class="pill">ส่งคำจองสำเร็จ</span>
       <h3>เลขรายการจองของคุณ</h3>
       <strong class="booking-success-code" id="successBookingCode">-</strong>
-      <p class="booking-success-warning">กรุณาส่งเลขจองนี้ไปทางเพจเพื่อป้องกันข้อผิดพลาด</p>
+      <p class="booking-success-warning">คุณสามารถใช้เบอร์โทร อีเมล หรือชื่อผู้จองเพื่อเช็คประวัติภายหลังได้</p>
       <div class="booking-success-actions">
         <button type="button" class="booking-copy-btn" id="copyBookingCodeBtn">
           <span class="booking-action-icon">⧉</span>
           <span>คัดลอกเลขจอง</span>
-        </button>
-        <button type="button" class="booking-send-btn" id="sendBookingCodeBtn">
-          ส่งหมายเลขจองเปิด Facebook
         </button>
       </div>
     </div>

@@ -1116,12 +1116,23 @@ function isCancelledBooking(booking) {
   return status.includes("ยกเลิก") || paymentStatus.includes("ยกเลิก") || status.includes("cancel") || paymentStatus.includes("cancel");
 }
 
-function bookingCoversDate(booking, dateKey) {
-  if (!booking.checkIn || !booking.checkOut) return false;
+function normalizeBookingDateKey(value) {
+  const match = String(value || "").trim().match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : "";
+}
 
+function bookingCoversDate(booking, dateKey) {
   if (isCancelledBooking(booking)) return false;
 
-  return dateKey >= booking.checkIn && dateKey < booking.checkOut;
+  const selectedDate = normalizeBookingDateKey(dateKey);
+  const checkInDate = normalizeBookingDateKey(booking.checkIn);
+  const checkOutDate = normalizeBookingDateKey(booking.checkOut);
+
+  if (!selectedDate || !checkInDate || !checkOutDate) return false;
+
+  // A stay occupies [check-in, check-out): the checkout day is available
+  // for the next guest to check in.
+  return selectedDate >= checkInDate && selectedDate < checkOutDate;
 }
 
 function getBookingsForDate(dateKey) {

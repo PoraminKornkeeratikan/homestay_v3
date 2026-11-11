@@ -2801,29 +2801,6 @@ td small {
   background: var(--green-50);
 }
 
-.booking-send-btn {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 8px 14px;
-  border: 0;
-  background: linear-gradient(135deg, #2384ff 0%, #1877f2 48%, #0759c7 100%);
-  color: #fff;
-  box-shadow: 0 14px 28px rgba(24, 119, 242, .3);
-  text-align: center;
-}
-
-.booking-send-btn:hover {
-  box-shadow: 0 15px 30px rgba(24, 119, 242, .34);
-  transform: translateY(-1px);
-}
-
-.booking-send-btn:disabled {
-  background: #9ca3af;
-  box-shadow: none;
-  cursor: not-allowed;
-}
-
 .booking-action-icon {
   font-size: 22px;
   line-height: 1;
@@ -2874,9 +2851,6 @@ body.booking-success-open {
     grid-template-columns: 1fr;
   }
 
-  .booking-send-btn {
-    order: -1;
-  }
 }
 
 
@@ -3631,6 +3605,18 @@ body.topup-modal-open #topupModal .topup-card {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
+}
+
+.history-result-count {
+  margin: 0 0 12px;
+  color: var(--green-900);
+  font-weight: 700;
+}
+
+.history-card + .history-card {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
 }
 
 .history-card > div {
@@ -6633,7 +6619,6 @@ body.modal-open {
   gap: 10px;
 }
 
-.booking-success-actions .booking-send-btn,
 .booking-success-actions .booking-copy-btn {
   width: 100% !important;
   min-width: 0;
@@ -6649,9 +6634,6 @@ body.modal-open {
   text-align: center;
 }
 
-.booking-success-actions .booking-send-btn {
-  order: -1;
-}
 
 /* Mobile booking calendar: prevent status text from overlapping the date. */
 @media (max-width: 560px) {
