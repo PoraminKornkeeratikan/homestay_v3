@@ -2726,8 +2726,14 @@ td small {
 }
 
 .booking-success-card {
+  position: relative;
   width: min(460px, 100%);
   text-align: center;
+}
+
+.booking-success-close {
+  top: 14px;
+  right: 14px;
 }
 
 .booking-success-icon {
@@ -2844,6 +2850,16 @@ td small {
 
 body.booking-success-open {
   overflow: hidden;
+}
+
+@media (max-width: 560px) {
+  html.mobile-keyboard-open {
+    scroll-behavior: auto;
+  }
+
+  html.mobile-keyboard-open .customer-topbar {
+    position: static;
+  }
 }
 
 @media (max-width: 560px) {

@@ -1455,7 +1455,6 @@ function renderBookingTable() {
 
   bookingTable.innerHTML = filtered.map(booking => {
     const addonLines = getBookingAddonLines(booking);
-    const slipVerifyHtml = renderSlipVerifyStatus(booking);
     const slipPreviewHtml = renderPaymentSlipPreview(booking);
     const guestCount = Number(booking.guestCount || 1);
     const grandTotal = Number(booking.grandTotal || booking.total || 0);
@@ -1497,7 +1496,6 @@ function renderBookingTable() {
           <div class="owner-payment-cell">
             <b>${escapeHtml(booking.paymentStatus || "รอชำระเงิน")}</b>
             ${slipPreviewHtml}
-            ${slipVerifyHtml}
           </div>
         </td>
         <td class="booking-status-cell">

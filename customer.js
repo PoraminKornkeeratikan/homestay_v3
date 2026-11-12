@@ -64,6 +64,7 @@ const backToEditBtn = document.getElementById("backToEditBtn");
 const bookingSuccessModal = document.getElementById("bookingSuccessModal");
 const successBookingCode = document.getElementById("successBookingCode");
 const copyBookingCodeBtn = document.getElementById("copyBookingCodeBtn");
+const closeBookingSuccessBtn = document.getElementById("closeBookingSuccessBtn");
 let completedBookingCode = "";
 
 const historyForm = document.getElementById("historyForm");
@@ -762,6 +763,45 @@ function showBookingSuccess(bookingCode) {
   document.body.classList.add("booking-success-open");
 }
 
+function closeBookingSuccess() {
+  bookingSuccessModal?.classList.add("hidden");
+  document.body.classList.remove("booking-success-open");
+}
+
+function isTextEntryElement(element) {
+  return element instanceof HTMLElement && (
+    element.matches("input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']):not([type='file']), textarea, [contenteditable='true']")
+  );
+}
+
+function setupMobileKeyboardBehavior() {
+  const dismissKeyboardOutsideField = event => {
+    const activeElement = document.activeElement;
+    if (!isTextEntryElement(activeElement) || isTextEntryElement(event.target)) return;
+    activeElement.blur();
+  };
+
+  document.addEventListener("pointerdown", dismissKeyboardOutsideField, true);
+
+  document.addEventListener("focusin", event => {
+    if (!isTextEntryElement(event.target) || !window.visualViewport) return;
+    window.setTimeout(() => {
+      event.target.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 250);
+  });
+
+  if (!window.visualViewport) return;
+
+  const updateKeyboardState = () => {
+    const keyboardHeight = window.innerHeight - window.visualViewport.height;
+    document.documentElement.classList.toggle("mobile-keyboard-open", keyboardHeight > 150);
+  };
+
+  window.visualViewport.addEventListener("resize", updateKeyboardState);
+  window.visualViewport.addEventListener("scroll", updateKeyboardState);
+  updateKeyboardState();
+}
+
 function setupPaymentQr(amount = 0) {
   const cleanUrl = getPaymentQrImageUrl(settings, amount, 260);
 
@@ -1383,6 +1423,16 @@ backToEditBtn.addEventListener("click", () => {
   showToast("กลับไปแก้ข้อมูลได้เลย");
 });
 copyBookingCodeBtn?.addEventListener("click", () => copyCompletedBookingCode());
+closeBookingSuccessBtn?.addEventListener("click", closeBookingSuccess);
+bookingSuccessModal?.addEventListener("click", event => {
+  if (event.target === bookingSuccessModal) closeBookingSuccess();
+});
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && !bookingSuccessModal?.classList.contains("hidden")) {
+    closeBookingSuccess();
+  }
+});
 
 historyForm.addEventListener("submit", lookupBooking);
 
@@ -1391,5 +1441,6 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 setMinDates();
+setupMobileKeyboardBehavior();
 loadBootstrap();
 updateSummary();

@@ -24,6 +24,19 @@
       box-shadow: 0 14px 34px rgba(15, 61, 46, .08);
     }
 
+    /* Keep the Owner controls reachable while scrolling. This owner-specific
+       rule intentionally overrides the shared mobile `.topbar { position: static; }`. */
+    body:not(.login-hidden) > header.topbar {
+      position: -webkit-sticky;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      width: 100%;
+      background: rgba(255, 255, 255, .96);
+      -webkit-backdrop-filter: blur(18px);
+      backdrop-filter: blur(18px);
+    }
+
     body.login-hidden header.topbar { display: none; }
 
     /* ===== HAMBURGER MENU ===== */
