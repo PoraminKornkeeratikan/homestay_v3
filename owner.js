@@ -1207,20 +1207,24 @@ function renderOwnerCalendar() {
     const date = new Date(year, month, day);
     const key = toDateKey(date);
     const dayBookings = getBookingsForDate(key);
-    const hasBooking = dayBookings.length > 0;
     const availableRoomCount = getAvailableRoomsForDate(key).length;
+    const hasBooking = dayBookings.length > 0;
+    const isUnavailable = availableRoomCount === 0;
 
-    const classes = ["calendar-day", hasBooking ? "booked" : "available"];
+    const classes = ["calendar-day", (hasBooking || isUnavailable) ? "booked" : "available"];
+    if (isUnavailable) classes.push("unavailable");
     if (key === ownerSelectedDateKey) classes.push("selected-start");
 
-    const badge = hasBooking ? `${dayBookings.length} จอง` : "ว่าง";
-    const roomText = `${availableRoomCount} ห้องว่าง`;
+    const badge = isUnavailable
+      ? "ไม่ว่าง"
+      : (hasBooking ? `${dayBookings.length} จอง` : "ว่าง");
+    const roomText = isUnavailable ? "" : `${availableRoomCount} ห้องว่าง`;
 
     cells.push(`
       <button type="button" class="${classes.join(" ")}" onclick="selectOwnerCalendarDate('${key}')">
         <strong class="owner-day-number">${day}</strong>
         <span class="owner-day-status">${badge}</span>
-        <small class="owner-day-room">${roomText}</small>
+        ${roomText ? `<small class="owner-day-room">${roomText}</small>` : ""}
       </button>
     `);
   }
@@ -1244,68 +1248,74 @@ function renderDateDetails(dateKey) {
   }
 
   const dayBookings = getBookingsForDate(dateKey);
-  const availableRooms = getAvailableRoomsForDate(dateKey);
 
   ownerSelectedDateText.textContent = formatThaiDate(dateKey);
 
-  const availableHtml = `
-    <div class="date-available-box">
-      <b>ห้องว่างวันนี้: ${availableRooms.length} ห้อง</b>
-      <span>${availableRooms.length ? availableRooms.map(room => escapeHtml(room.name)).join(", ") : "ไม่มีห้องว่าง"}</span>
-    </div>
-  `;
-
-  if (!dayBookings.length) {
-    ownerDateDetailList.innerHTML = `
-      ${availableHtml}
-      <div class="empty">วันนี้ยังไม่มีลูกค้าจอง</div>
-    `;
+  if (!rooms.length) {
+    ownerDateDetailList.innerHTML = `<div class="empty">ยังไม่มีบ้านพักในระบบ</div>`;
     return;
   }
 
-  const bookingHtml = dayBookings.map(booking => {
-    const addons = getBookingAddonLines(booking);
+  const roomCardsHtml = rooms.map(room => {
+    const booking = dayBookings.find(item =>
+      String(item.roomId || "") === String(room.id || "")
+      || (!item.roomId && String(item.roomName || "").trim() === String(room.name || "").trim())
+    );
+    const isBooked = Boolean(booking);
+    const addons = isBooked ? getBookingAddonLines(booking) : [];
+    const normalRoomPrice = Number(room.price || 0);
+    const discountRoomPrice = Math.max(0, Number(room.discountPrice ?? room.discount_price ?? 0));
+    const currentRoomPrice = discountRoomPrice > 0 && discountRoomPrice < normalRoomPrice
+      ? discountRoomPrice
+      : normalRoomPrice;
+    const bookedRoomPrice = Number(booking?.roomPrice || 0);
+    const displayedRoomPrice = isBooked && bookedRoomPrice > 0
+      ? bookedRoomPrice
+      : currentRoomPrice;
+    const addonLines = addons.length
+      ? addons.map(line => `<span>${escapeHtml(line)}</span>`).join("")
+      : `<span>-</span>`;
+
     return `
-      <article class="date-booking-card">
-        <div class="date-booking-top">
-          <div>
-            <span>เลขรายการจอง</span>
-            <strong>${escapeHtml(booking.bookingCode || booking.id || "-")}</strong>
-          </div>
-          <span class="status ${statusClass(booking.status)}">${escapeHtml(booking.status || "-")}</span>
+      <article class="date-room-card ${isBooked ? "is-booked" : "is-available"}">
+        <header class="date-room-card-head">
+          <h4>${escapeHtml(room.name || "บ้านพัก")}</h4>
+          <p>ราคาห้อง ${formatMoney(displayedRoomPrice)}</p>
+        </header>
+
+        ${renderImageBlock(room.image || "", room.name || "รูปบ้านพัก", "date-room-image")}
+
+        <div class="date-room-customer">
+          <p><b>ชื่อลูกค้า :</b> <span>${isBooked ? escapeHtml(booking.name || "-") : "-"}</span></p>
+          <p><b>เบอร์โทร :</b> <span>${isBooked ? escapeHtml(booking.phone || "-") : "-"}</span></p>
+          <p><b>email :</b> <span>${isBooked ? escapeHtml(booking.email || "-") : "-"}</span></p>
+          <p><b>เลขรายการจอง :</b> <span>${isBooked ? escapeHtml(booking.bookingCode || booking.id || "-") : "-"}</span></p>
+          <p><b>เช็คอิน :</b> <span>${isBooked ? escapeHtml(formatThaiDate(normalizeBookingDateKey(booking.checkIn))) : "-"}</span></p>
+          <p><b>เช็คเอ้า :</b> <span>${isBooked ? escapeHtml(formatThaiDate(normalizeBookingDateKey(booking.checkOut))) : "-"}</span></p>
         </div>
 
-        <div class="date-booking-grid">
-          <div>
-            <span>ลูกค้า</span>
-            <b>${escapeHtml(booking.name || "-")}</b>
-            <small>${escapeHtml(booking.phone || "-")}</small>
-            ${booking.email ? `<small>${escapeHtml(booking.email)}</small>` : ""}
-          </div>
-          <div>
-            <span>ห้องพัก</span>
-            <b>${escapeHtml(booking.roomName || "-")}</b>
-            <small>${escapeHtml(formatOwnerShortDate(booking.checkIn))} → ${escapeHtml(formatOwnerShortDate(booking.checkOut))}</small>
-          </div>
-          <div>
-            <span>บริการเสริม</span>
-            <b>${escapeHtml(addons.length ? addons.join(", ") : "ไม่มี")}</b>
-            <small>รวมเสริม ${formatMoney(booking.addonTotal || 0)}</small>
-          </div>
+        <div class="date-room-addons">
+          <strong>บริการเสริม</strong>
+          <div class="date-room-addon-lines">${addonLines}</div>
+          <b>${formatMoney(isBooked ? booking.addonTotal || 0 : 0)}</b>
+        </div>
+
+        <footer class="date-room-total">
           <div>
             <span>ยอดรวม</span>
-            <b>${formatMoney(booking.grandTotal || 0)}</b>
-            <small>${escapeHtml(booking.paymentStatus || "รอชำระเงิน")}</small>
+            <strong>${formatMoney(isBooked ? booking.grandTotal || booking.total || 0 : 0)}</strong>
           </div>
-        </div>
+          ${isBooked && booking.slipUrl
+            ? `<button type="button" data-slip-url="${escapeHtml(booking.slipUrl)}" onclick="openSlipImagePopup(this.dataset.slipUrl)">ดูสลิปการโอน</button>`
+            : `<span class="date-room-slip-empty">${isBooked ? "ไม่มีสลิป" : "ยังไม่มีการจอง"}</span>`}
+        </footer>
 
-        ${booking.note ? `<p class="date-note">หมายเหตุ: ${escapeHtml(booking.note)}</p>` : ""}
-        ${booking.slipUrl ? `<button type="button" class="slip-link" data-slip-url="${escapeHtml(booking.slipUrl)}" onclick="openSlipImagePopup(this.dataset.slipUrl)">สลิปการโอน</button>` : ""}
+        ${isBooked && booking.note ? `<p class="date-note">หมายเหตุ: ${escapeHtml(booking.note)}</p>` : ""}
       </article>
     `;
   }).join("");
 
-  ownerDateDetailList.innerHTML = availableHtml + bookingHtml;
+  ownerDateDetailList.innerHTML = `<div class="date-room-card-grid">${roomCardsHtml}</div>`;
 }
 
 function renderSlipCheck(label, check) {
